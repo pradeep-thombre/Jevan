@@ -54,7 +54,7 @@ func main() {
 	// Cart routes
 	cartController := apis.NewCartController(cartService)
 	e.POST("/cart/id", cartController.AddItemToCart)
-	e.DELETE("/cart/id", cartController.DeleteItemsFromCart)
+	e.DELETE("/cart/id/items/:itemId", cartController.DeleteItemsFromCart)
 	e.DELETE("/cart/id/all", cartController.DeleteAllItems)
 	e.GET("/cart/:id", cartController.GetCartItemsById)
 

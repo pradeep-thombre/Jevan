@@ -80,37 +80,6 @@ info:
   version: "1.0"
 paths:
   /cart/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Remove an item from the cart using itemId
-      parameters:
-      - description: Cart ID
-        example: '"cart123"'
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Item ID
-        example: '"item456"'
-        in: query
-        name: itemId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Item deleted successfully
-          schema:
-            type: string
-        "400":
-          description: Failed to delete item
-          schema:
-            $ref: '#/definitions/commons.ApiErrorResponsePayload'
-      summary: Delete item from cart
-      tags:
-      - Cart
     get:
       consumes:
       - application/json
@@ -162,6 +131,38 @@ paths:
           schema:
             $ref: '#/definitions/commons.ApiErrorResponsePayload'
       summary: Delete all items from cart
+      tags:
+      - Cart
+  /cart/{id}/items/{itemId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove an item from the cart using itemId
+      parameters:
+      - description: Cart ID
+        example: '"cart123"'
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Item ID
+        example: '"item456"'
+        in: query
+        name: itemId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item deleted successfully
+          schema:
+            type: string
+        "400":
+          description: Failed to delete item
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
+      summary: Delete item from cart
       tags:
       - Cart
   /cart/id:
@@ -314,9 +315,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
       summary: Create Product
       tags:
       - Product
@@ -338,6 +337,10 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
       summary: Delete Product by ID
       tags:
       - Product
@@ -356,6 +359,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
       summary: Get Product by ID
       tags:
       - Product
@@ -384,6 +391,10 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
       summary: Update Product
       tags:
       - Product

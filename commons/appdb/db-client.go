@@ -1,6 +1,7 @@
 package appdb
 
 import (
+	"Jevan/commons/apploggers"
 	"context"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,7 +27,10 @@ func NewDatabaseClient(databasename string, client *mongo.Client) DatabaseClient
 
 // function to get close the db connection
 func (d *dbclient) Disconnect(ctx context.Context) {
-	d.client.Disconnect(ctx)
+	logger := apploggers.GetLogger(ctx, false)
+	if err := d.client.Disconnect(ctx); err != nil {
+		logger.Info("Error disconnecting from DB: %v\n", err)
+	}
 }
 
 // function to get collection for the database

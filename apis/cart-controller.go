@@ -6,6 +6,7 @@ import (
 	"Jevan/internals/models"
 	"Jevan/internals/services"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -36,6 +37,12 @@ func NewCartController(cservice services.CartService) cartController {
 func (c *cartController) AddItemToCart(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
 	cartId := e.Param("id")
+
+	if len(strings.TrimSpace(cartId)) == 0 {
+		logger.Error("error: cart id required.")
+		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
+	}
+
 	var item models.CartItem
 	if err := e.Bind(&item); err != nil {
 		logger.Error(err)
@@ -43,9 +50,11 @@ func (c *cartController) AddItemToCart(e echo.Context) error {
 	}
 
 	if err := c.cservice.AddItemToCart(lcontext, cartId, &item); err != nil {
+		logger.Error(err)
 		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
 	}
 
+	logger.Info("Item added to cart successfully")
 	return e.JSON(http.StatusOK, item)
 }
 
@@ -63,12 +72,18 @@ func (c *cartController) GetCartItemsById(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
 	cartId := e.Param("id")
 
+	if len(strings.TrimSpace(cartId)) == 0 {
+		logger.Error("error: cart id required.")
+		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
+	}
+
 	cart, err := c.cservice.GetCartItemsById(lcontext, cartId)
 	if err != nil {
 		logger.Error(err)
 		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
 	}
 
+	logger.Info("Fetched cart items successfully")
 	return e.JSON(http.StatusOK, cart)
 }
 
@@ -82,17 +97,28 @@ func (c *cartController) GetCartItemsById(e echo.Context) error {
 // @Param itemId query string true "Item ID" example("item456")
 // @Success 200 {string} string "Item deleted successfully"
 // @Failure 400 {object} commons.ApiErrorResponsePayload "Failed to delete item"
-// @Router /cart/{id} [delete]
+// @Router /cart/{id}/items/{itemId} [delete]
 func (c *cartController) DeleteItemsFromCart(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
 	cartId := e.Param("id")
 	itemId := e.QueryParam("itemId")
+
+	if len(strings.TrimSpace(cartId)) == 0 {
+		logger.Error("error: cart id required.")
+		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
+	}
+
+	if len(strings.TrimSpace(itemId)) == 0 {
+		logger.Error("error: item id required.")
+		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: item id required.", nil))
+	}
 
 	if err := c.cservice.DeleteItemsFromCart(lcontext, cartId, itemId); err != nil {
 		logger.Error(err)
 		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
 	}
 
+	logger.Info("Item deleted from cart successfully")
 	return e.JSON(http.StatusOK, "Item deleted successfully")
 }
 
@@ -110,10 +136,16 @@ func (c *cartController) DeleteAllItems(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
 	cartId := e.Param("id")
 
+	if len(strings.TrimSpace(cartId)) == 0 {
+		logger.Error("error: cart id required.")
+		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
+	}
+
 	if err := c.cservice.DeleteAllItems(lcontext, cartId); err != nil {
 		logger.Error(err)
 		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
 	}
 
+	logger.Info("All items deleted from cart successfully")
 	return e.JSON(http.StatusOK, "All items deleted successfully")
 }

@@ -106,7 +106,48 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
+            }
+        },
+        "/cart/{id}/all": {
+            "delete": {
+                "description": "Remove all items from the cart identified by cartId",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Delete all items from cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"cart123\"",
+                        "description": "Cart ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All items deleted successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Failed to delete items from cart",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/{id}/items/{itemId}": {
             "delete": {
                 "description": "Remove an item from the cart using itemId",
                 "consumes": [
@@ -146,45 +187,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Failed to delete item",
-                        "schema": {
-                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
-                        }
-                    }
-                }
-            }
-        },
-        "/cart/{id}/all": {
-            "delete": {
-                "description": "Remove all items from the cart identified by cartId",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Cart"
-                ],
-                "summary": "Delete all items from cart",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "\"cart123\"",
-                        "description": "Cart ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "All items deleted successfully",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Failed to delete items from cart",
                         "schema": {
                             "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
@@ -371,10 +373,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
                     }
                 }
@@ -404,6 +403,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
                     }
                 }
@@ -447,6 +452,12 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
                     }
                 }
             },
@@ -476,6 +487,12 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
                     }
                 }
