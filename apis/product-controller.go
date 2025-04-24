@@ -1,10 +1,12 @@
 package apis
 
 import (
+	"Jevan/commons"
 	"Jevan/commons/apploggers"
 	"Jevan/internals/models"
 	"Jevan/internals/services"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -26,7 +28,7 @@ func NewProductController(productService services.ProductService) *ProductContro
 // @Produce json
 // @Param product body models.Product true "Product Info"
 // @Success 201 {object} map[string]string
-// @Failure 400 {object} map[string]string
+// @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /products [post]
 func (pc *ProductController) CreateProduct(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
@@ -34,14 +36,14 @@ func (pc *ProductController) CreateProduct(c echo.Context) error {
 
 	var product models.Product
 	if err := c.Bind(&product); err != nil {
-		logger.Error("Failed to bind product request: ", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		logger.Error("Invalid request body: ", err)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
 	}
 
 	id, err := pc.productService.CreateProduct(c.Request().Context(), &product)
 	if err != nil {
 		logger.Error("Failed to create product: ", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create product"})
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Failed to create product", nil))
 	}
 
 	logger.Infof("Product created with ID: %s", id)
@@ -52,7 +54,7 @@ func (pc *ProductController) CreateProduct(c echo.Context) error {
 // @Description Retrieves all products
 // @Tags Product
 // @Produce json
-// @Success 200 {array} models.Product
+// @Success 200 {object} map[string]interface{}
 // @Router /products [get]
 func (pc *ProductController) GetAllProducts(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
@@ -60,12 +62,15 @@ func (pc *ProductController) GetAllProducts(c echo.Context) error {
 
 	products, err := pc.productService.GetAllProducts(c.Request().Context())
 	if err != nil {
-		logger.Error("Failed to get all products: ", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch products"})
+		logger.Error("Failed to fetch products: ", err)
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Failed to fetch products", nil))
 	}
 
 	logger.Infof("Fetched %d products", len(products))
-	return c.JSON(http.StatusOK, products)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total":    len(products),
+		"products": products,
+	})
 }
 
 // @Summary Update Product
@@ -75,23 +80,29 @@ func (pc *ProductController) GetAllProducts(c echo.Context) error {
 // @Produce json
 // @Param id path string true "Product ID"
 // @Param product body models.Product true "Product Info"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /products/{id} [put]
 func (pc *ProductController) UpdateProduct(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
 	id := c.Param("id")
+
+	if len(strings.TrimSpace(id)) == 0 {
+		logger.Error("'id' is required")
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'id' is required", nil))
+	}
+
 	logger.Infof("Received request to update product with ID: %s", id)
 
 	var product models.Product
 	if err := c.Bind(&product); err != nil {
-		logger.Error("Failed to bind product update request: ", err)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		logger.Error("Invalid request body: ", err)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
 	}
 
-	err := pc.productService.UpdateProduct(c.Request().Context(), &product, id)
-	if err != nil {
+	if err := pc.productService.UpdateProduct(c.Request().Context(), &product, id); err != nil {
 		logger.Error("Failed to update product: ", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update product"})
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Failed to update product", nil))
 	}
 
 	logger.Infof("Successfully updated product with ID: %s", id)
@@ -104,16 +115,23 @@ func (pc *ProductController) UpdateProduct(c echo.Context) error {
 // @Produce json
 // @Param id path string true "Product ID"
 // @Success 200 {object} models.Product
+// @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /products/{id} [get]
 func (pc *ProductController) GetProductById(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
 	id := c.Param("id")
+
+	if len(strings.TrimSpace(id)) == 0 {
+		logger.Error("'id' is required")
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'id' is required", nil))
+	}
+
 	logger.Infof("Received request to get product by ID: %s", id)
 
 	product, err := pc.productService.GetProductById(c.Request().Context(), id)
 	if err != nil {
-		logger.Error("Failed to get product by ID: ", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch product"})
+		logger.Error("Failed to fetch product: ", err)
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Failed to fetch product", nil))
 	}
 
 	logger.Infof("Fetched product with ID: %s", id)
@@ -126,16 +144,22 @@ func (pc *ProductController) GetProductById(c echo.Context) error {
 // @Produce json
 // @Param id path string true "Product ID"
 // @Success 200 {object} map[string]string
+// @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /products/{id} [delete]
 func (pc *ProductController) DeleteProductById(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
 	id := c.Param("id")
+
+	if len(strings.TrimSpace(id)) == 0 {
+		logger.Error("'id' is required")
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'id' is required", nil))
+	}
+
 	logger.Infof("Received request to delete product with ID: %s", id)
 
-	err := pc.productService.DeleteProductById(c.Request().Context(), id)
-	if err != nil {
+	if err := pc.productService.DeleteProductById(c.Request().Context(), id); err != nil {
 		logger.Error("Failed to delete product: ", err)
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete product"})
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Failed to delete product", nil))
 	}
 
 	logger.Infof("Successfully deleted product with ID: %s", id)

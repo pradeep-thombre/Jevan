@@ -230,6 +230,18 @@ Cancel an order by ID.
 
 Swagger UI: [http://localhost:3000/swagger/index.html](http://localhost:3000/swagger/index.html)
 
+Swagger Regenerate:
+
+```bash
+    swag init --output=apis/docs
+```
+
+Lint:
+
+```bash
+    golangci-lint run ./...
+```
+
 ## Authors
 
 - [Pradeep Thombre](https://www.github.com/pradeep-thombre)

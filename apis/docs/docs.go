@@ -18,9 +18,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/cart/id": {
+        "/cart": {
             "post": {
-                "description": "Add an item to the cart identified by cartId",
+                "description": "Creates or updates a cart with new list of items and total price",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,37 +30,110 @@ const docTemplate = `{
                 "tags": [
                     "Cart"
                 ],
-                "summary": "Add item to cart",
+                "summary": "Overwrite or add items to cart",
                 "parameters": [
                     {
-                        "type": "string",
-                        "example": "\"cart123\"",
-                        "description": "Cart ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Item to add to cart",
-                        "name": "item",
+                        "description": "Cart object",
+                        "name": "cart",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CartItem"
+                            "$ref": "#/definitions/models.Cart"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully added item to cart",
+                        "description": "Cart updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/models.CartItem"
+                            "$ref": "#/definitions/models.Cart"
                         }
                     },
                     "400": {
-                        "description": "Invalid input or failed to add item",
+                        "description": "Invalid cart data",
                         "schema": {
-                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Could not update cart",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/{cartId}/item/{itemId}": {
+            "put": {
+                "description": "Updates the quantity of a specific item in a cart, removes if quantity = 0",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Update quantity of a cart item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart ID",
+                        "name": "cartId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Quantity payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "$ref": "#/definitions/models.Cart"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update item",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -82,7 +155,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "\"cart123\"",
                         "description": "Cart ID",
                         "name": "id",
                         "in": "path",
@@ -91,61 +163,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of items in cart",
+                        "description": "Cart object with all items",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.CartItem"
-                            }
+                            "$ref": "#/definitions/models.Cart"
                         }
                     },
                     "400": {
                         "description": "Failed to get items from cart",
-                        "schema": {
-                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Remove an item from the cart using itemId",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Cart"
-                ],
-                "summary": "Delete item from cart",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "\"cart123\"",
-                        "description": "Cart ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"item456\"",
-                        "description": "Item ID",
-                        "name": "itemId",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Item deleted successfully",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Failed to delete item",
                         "schema": {
                             "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
@@ -169,7 +193,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "\"cart123\"",
                         "description": "Cart ID",
                         "name": "id",
                         "in": "path",
@@ -178,10 +201,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "All items deleted successfully",
-                        "schema": {
-                            "type": "string"
-                        }
+                        "description": "OK"
                     },
                     "400": {
                         "description": "Failed to delete items from cart",
@@ -371,10 +391,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
                     }
                 }
@@ -404,6 +421,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Product"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
                         }
                     }
                 }
@@ -447,6 +470,12 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
                     }
                 }
             },
@@ -477,6 +506,196 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "get details of all users",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "GetUsers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.User"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a user with name, email, age, and is_Active status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "CreateUser",
+                "parameters": [
+                    {
+                        "description": "User data",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "get": {
+                "description": "Gets user details by user id such as name, email, status etc.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "GetUserById",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete user details by user id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "DeleteUserById",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "update user details such as name, email, age, and is_Active status bu user id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Management"
+                ],
+                "summary": "UpdateUser",
+                "parameters": [
+                    {
+                        "description": "User data",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "User Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/commons.ApiErrorResponsePayload"
+                        }
                     }
                 }
             }
@@ -495,6 +714,23 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "models.Cart": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CartItem"
+                    }
+                },
+                "totalprice": {
+                    "type": "number"
                 }
             }
         },
@@ -535,7 +771,7 @@ const docTemplate = `{
                     "description": "e.g., \"pending\", \"confirmed\", \"delivered\"",
                     "type": "string"
                 },
-                "total_price": {
+                "totalprice": {
                     "type": "number"
                 },
                 "updated_at": {
@@ -588,6 +824,32 @@ const docTemplate = `{
                     "type": "number"
                 }
             }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "string"
+                },
+                "age": {
+                    "type": "integer"
+                },
+                "cart_id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
@@ -595,7 +857,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "localhost:3000",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Jevan - Mess Management API",

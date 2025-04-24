@@ -9,9 +9,9 @@ import (
 )
 
 type CartService interface {
-	AddItemToCart(ctx context.Context, cartId string, item *models.CartItem) error
+	UpdateCart(ctx context.Context, cart *models.Cart) error
+	UpdateItemQuantity(ctx context.Context, cartId string, itemId string, quantity int) (*models.Cart, error)
 	GetCartItemsById(ctx context.Context, cartId string) (*models.Cart, error)
-	DeleteItemsFromCart(ctx context.Context, cartId string, itemId string) error
 	DeleteAllItems(ctx context.Context, cartId string) error
 }
 
@@ -23,20 +23,6 @@ func NewCartService(dbservice db.CartDbService) CartService {
 	return &cartService{
 		dbservice: dbservice,
 	}
-}
-
-func (c *cartService) AddItemToCart(ctx context.Context, cartId string, item *models.CartItem) error {
-	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Executing AddItemToCart, cartId: %s", cartId)
-
-	err := c.dbservice.AddToCart(ctx, cartId, item)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to add item to cart: %s", err))
-		return err
-	}
-
-	logger.Infof("Executed AddItemToCart, cartId: %s", cartId)
-	return nil
 }
 
 func (c *cartService) GetCartItemsById(ctx context.Context, cartId string) (*models.Cart, error) {
@@ -53,20 +39,6 @@ func (c *cartService) GetCartItemsById(ctx context.Context, cartId string) (*mod
 	return cart, nil
 }
 
-func (c *cartService) DeleteItemsFromCart(ctx context.Context, cartId string, itemId string) error {
-	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Executing DeleteItemsFromCart, cartId: %s, itemId: %s", cartId, itemId)
-
-	err := c.dbservice.DeleteItemFromCart(ctx, cartId, itemId)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to delete item from cart: %s", err))
-		return err
-	}
-
-	logger.Infof("Executed DeleteItemsFromCart, cartId: %s, itemId: %s", cartId, itemId)
-	return nil
-}
-
 func (c *cartService) DeleteAllItems(ctx context.Context, cartId string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing DeleteAllItems, cartId: %s", cartId)
@@ -79,4 +51,34 @@ func (c *cartService) DeleteAllItems(ctx context.Context, cartId string) error {
 
 	logger.Infof("Executed DeleteAllItems, cartId: %s", cartId)
 	return nil
+}
+
+func (cs *cartService) UpdateCart(ctx context.Context, cart *models.Cart) error {
+	return cs.dbservice.SaveCart(ctx, cart)
+}
+
+func (cs *cartService) UpdateItemQuantity(ctx context.Context, cartId, itemId string, quantity int) (*models.Cart, error) {
+	cart, err := cs.GetCartItemsById(ctx, cartId)
+	if err != nil {
+		return nil, err
+	}
+
+	var updatedItems []models.CartItem
+	var total float64
+
+	for _, item := range cart.Items {
+		if item.ItemID == itemId {
+			if quantity == 0 {
+				continue
+			}
+			item.Quantity = quantity
+		}
+		total += float64(item.Quantity) * item.Price
+		updatedItems = append(updatedItems, item)
+	}
+
+	cart.Items = updatedItems
+	cart.TotalPrice = total
+	err = cs.dbservice.SaveCart(ctx, cart)
+	return cart, err
 }

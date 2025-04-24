@@ -14,7 +14,7 @@ type CartItem struct {
 
 // Cart represents the structure of a user's cart
 type Cart struct {
-	ID     primitive.ObjectID `json:"_id" bson:"_id"`
-	UserID string             `json:"user_id" bson:"user_id"`
-	Items  []CartItem         `json:"items" bson:"items"`
+	ID         primitive.ObjectID `json:"id" bson:"_id"`
+	Items      []CartItem         `json:"items" bson:"items"`
+	TotalPrice float64            `json:"totalprice"`
 }

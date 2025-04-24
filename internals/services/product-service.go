@@ -30,8 +30,13 @@ func (p *productService) CreateProduct(ctx context.Context, product *models.Prod
 	logger.Infof("Executing CreateProduct product %v", product)
 	var schema *dbmodel.ProductSchema
 	b, _ := json.Marshal(product)
-	_ = json.Unmarshal(b, &schema)
-	return p.db.CreateProduct(ctx, schema)
+	uerror := json.Unmarshal(b, &schema)
+	if uerror != nil {
+		logger.Error(uerror)
+		return "", nil
+	}
+	productId, cerror := p.db.CreateProduct(ctx, schema)
+	return productId, cerror
 }
 
 func (p *productService) GetAllProducts(ctx context.Context) ([]*models.Product, error) {

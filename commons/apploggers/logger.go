@@ -35,7 +35,7 @@ func GetLoggerWithCorrelationid(ctx context.Context) *zap.SugaredLogger {
 	if logger, _ := ctx.Value(loggerKey{}).(*zap.Logger); logger != nil {
 		return logger.Sugar()
 	}
-	return nil
+	return NewZapLogger().Sugar()
 }
 
 // function to return new logger instance

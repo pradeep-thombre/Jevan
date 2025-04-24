@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type DbService interface {
+type OrderDbService interface {
 	SaveOrder(ctx context.Context, order *models.Order) (string, error)
 	GetOrderById(ctx context.Context, orderId string) (*models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderId string, status *models.Order) error
@@ -21,7 +21,7 @@ type orderDbService struct {
 	ucollection appdb.DatabaseCollection
 }
 
-func NewOrderDbService(dbclient appdb.DatabaseClient) DbService {
+func NewOrderDbService(dbclient appdb.DatabaseClient) OrderDbService {
 	return &orderDbService{
 		ucollection: dbclient.Collection("orders"),
 	}
