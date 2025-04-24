@@ -23,39 +23,64 @@ func NewCartController(cservice services.CartService) cartController {
 	}
 }
 
-// AddItemToCart godoc
-// @Summary Add item to cart
-// @Description Add an item to the cart identified by cartId
+// UpdateCart godoc
+// @Summary Overwrite or add items to cart
+// @Description Creates or updates a cart with new list of items and total price
 // @Tags Cart
 // @Accept json
 // @Produce json
-// @Param id path string true "Cart ID" example("cart123")
-// @Param item body models.CartItem true "Item to add to cart"
-// @Success 200 {object} models.CartItem "Successfully added item to cart"
-// @Failure 400 {object} commons.ApiErrorResponsePayload "Invalid input or failed to add item"
-// @Router /cart/id [post]
-func (c *cartController) AddItemToCart(e echo.Context) error {
+// @Param cart body models.Cart true "Cart object"
+// @Success 200 {object} models.Cart "Cart updated successfully"
+// @Failure 400 {object} map[string]string "Invalid cart data"
+// @Failure 500 {object} map[string]string "Could not update cart"
+// @Router /cart [post]
+func (cc *cartController) UpdateCart(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
-	cartId := e.Param("id")
+	var cart models.Cart
+	if err := e.Bind(&cart); err != nil {
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid cart data"})
+	}
+	logger.Infof("Executing UpdateCart %v", cart)
+	if err := cc.cservice.UpdateCart(lcontext, &cart); err != nil {
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not update cart"})
+	}
+	logger.Infof("Executed UpdateCart %v", cart)
+	return e.JSON(http.StatusOK, cart)
+}
 
-	if len(strings.TrimSpace(cartId)) == 0 {
-		logger.Error("error: cart id required.")
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
+// UpdateItemQuantity godoc
+// @Summary Update quantity of a cart item
+// @Description Updates the quantity of a specific item in a cart, removes if quantity = 0
+// @Tags Cart
+// @Accept json
+// @Produce json
+// @Param cartId path string true "Cart ID"
+// @Param itemId path string true "Item ID"
+// @Param request body map[string]int true "Quantity payload" example({"quantity": 2})
+// @Success 200 {object} models.Cart "Updated cart"
+// @Failure 400 {object} map[string]string "Invalid input"
+// @Failure 500 {object} map[string]string "Failed to update item"
+// @Router /cart/{cartId}/item/{itemId} [put]
+func (cc *cartController) UpdateItemQuantity(c echo.Context) error {
+	lcontext, logger := apploggers.GetLoggerFromEcho(c)
+	cartId := c.Param("cartId")
+	itemId := c.Param("itemId")
+
+	type Request struct {
+		Quantity int `json:"quantity"`
+	}
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+	}
+	logger.Infof("Executing UpdateItemQuantity cart id: %s, item id", cartId, itemId)
+
+	updatedCart, err := cc.cservice.UpdateItemQuantity(lcontext, cartId, itemId, req.Quantity)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	var item models.CartItem
-	if err := e.Bind(&item); err != nil {
-		logger.Error(err)
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
-	}
-
-	if err := c.cservice.AddItemToCart(lcontext, cartId, &item); err != nil {
-		logger.Error(err)
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
-	}
-
-	logger.Info("Item added to cart successfully")
-	return e.JSON(http.StatusOK, item)
+	return c.JSON(http.StatusOK, updatedCart)
 }
 
 // GetCartItemsById godoc
@@ -64,8 +89,8 @@ func (c *cartController) AddItemToCart(e echo.Context) error {
 // @Tags Cart
 // @Accept json
 // @Produce json
-// @Param id path string true "Cart ID" example("cart123")
-// @Success 200 {array} models.CartItem "List of items in cart"
+// @Param id path string true "Cart ID"
+// @Success 200 {object} models.Cart "Cart object with all items"
 // @Failure 400 {object} commons.ApiErrorResponsePayload "Failed to get items from cart"
 // @Router /cart/{id} [get]
 func (c *cartController) GetCartItemsById(e echo.Context) error {
@@ -87,49 +112,14 @@ func (c *cartController) GetCartItemsById(e echo.Context) error {
 	return e.JSON(http.StatusOK, cart)
 }
 
-// DeleteItemsFromCart godoc
-// @Summary Delete item from cart
-// @Description Remove an item from the cart using itemId
-// @Tags Cart
-// @Accept json
-// @Produce json
-// @Param id path string true "Cart ID" example("cart123")
-// @Param itemId query string true "Item ID" example("item456")
-// @Success 200 {string} string "Item deleted successfully"
-// @Failure 400 {object} commons.ApiErrorResponsePayload "Failed to delete item"
-// @Router /cart/{id}/items/{itemId} [delete]
-func (c *cartController) DeleteItemsFromCart(e echo.Context) error {
-	lcontext, logger := apploggers.GetLoggerFromEcho(e)
-	cartId := e.Param("id")
-	itemId := e.QueryParam("itemId")
-
-	if len(strings.TrimSpace(cartId)) == 0 {
-		logger.Error("error: cart id required.")
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: cart id required.", nil))
-	}
-
-	if len(strings.TrimSpace(itemId)) == 0 {
-		logger.Error("error: item id required.")
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse("error: item id required.", nil))
-	}
-
-	if err := c.cservice.DeleteItemsFromCart(lcontext, cartId, itemId); err != nil {
-		logger.Error(err)
-		return e.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
-	}
-
-	logger.Info("Item deleted from cart successfully")
-	return e.JSON(http.StatusOK, "Item deleted successfully")
-}
-
 // DeleteAllItems godoc
 // @Summary Delete all items from cart
 // @Description Remove all items from the cart identified by cartId
 // @Tags Cart
 // @Accept json
 // @Produce json
-// @Param id path string true "Cart ID" example("cart123")
-// @Success 200 {string} string "All items deleted successfully"
+// @Param id path string true "Cart ID"
+// @Success 200
 // @Failure 400 {object} commons.ApiErrorResponsePayload "Failed to delete items from cart"
 // @Router /cart/{id}/all [delete]
 func (c *cartController) DeleteAllItems(e echo.Context) error {
@@ -147,5 +137,5 @@ func (c *cartController) DeleteAllItems(e echo.Context) error {
 	}
 
 	logger.Info("All items deleted from cart successfully")
-	return e.JSON(http.StatusOK, "All items deleted successfully")
+	return e.NoContent(http.StatusOK)
 }

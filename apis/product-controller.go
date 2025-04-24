@@ -54,7 +54,7 @@ func (pc *ProductController) CreateProduct(c echo.Context) error {
 // @Description Retrieves all products
 // @Tags Product
 // @Produce json
-// @Success 200 {array} models.Product
+// @Success 200 {object} map[string]interface{}
 // @Router /products [get]
 func (pc *ProductController) GetAllProducts(c echo.Context) error {
 	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
@@ -67,7 +67,10 @@ func (pc *ProductController) GetAllProducts(c echo.Context) error {
 	}
 
 	logger.Infof("Fetched %d products", len(products))
-	return c.JSON(http.StatusOK, products)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total":    len(products),
+		"products": products,
+	})
 }
 
 // @Summary Update Product
@@ -77,7 +80,7 @@ func (pc *ProductController) GetAllProducts(c echo.Context) error {
 // @Produce json
 // @Param id path string true "Product ID"
 // @Param product body models.Product true "Product Info"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /products/{id} [put]
 func (pc *ProductController) UpdateProduct(c echo.Context) error {

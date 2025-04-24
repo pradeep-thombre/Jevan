@@ -19,7 +19,7 @@ import (
 // @description Backend APIs for Jevan mess application using Echo.
 // @contact.name API Support
 // @contact.email support@jevan.app
-// @host localhost:8080
+// @host localhost:3000
 // @BasePath /
 func main() {
 	// Set up logging and context
@@ -34,14 +34,24 @@ func main() {
 	cartDbService := db.NewCartDbService(configs.AppConfig.DbClient)
 	orderDbService := db.NewOrderDbService(configs.AppConfig.DbClient)
 	productDbService := db.NewProductDbService(configs.AppConfig.DbClient)
+	dbservice := db.NewUserDbService(configs.AppConfig.DbClient)
 
 	// Initialize services
 	productService := services.NewProductService(productDbService)
 	cartService := services.NewCartService(cartDbService)
 	orderService := services.NewOrderService(orderDbService)
+	eventService := services.NewUserEventService(dbservice)
 
-	// Initialize Echo
+	// Echo instance
 	e := echo.New()
+
+	// user api Routes
+	userController := apis.NewUserController(eventService)
+	e.GET("/users", userController.GetUsers)
+	e.GET("/users/:id", userController.GetUserById)
+	e.DELETE("/users/:id", userController.DeleteUserById)
+	e.POST("/users", userController.CreateUser)
+	e.PATCH("/users/:id", userController.UpdateUser)
 
 	// Product routes
 	productController := apis.NewProductController(productService)
@@ -53,10 +63,10 @@ func main() {
 
 	// Cart routes
 	cartController := apis.NewCartController(cartService)
-	e.POST("/cart/id", cartController.AddItemToCart)
-	e.DELETE("/cart/id/items/:itemId", cartController.DeleteItemsFromCart)
-	e.DELETE("/cart/id/all", cartController.DeleteAllItems)
+	e.POST("/cart", cartController.UpdateCart)
 	e.GET("/cart/:id", cartController.GetCartItemsById)
+	e.DELETE("/cart/:id/all", cartController.DeleteAllItems)
+	e.PUT("/cart/:cartId/item/:itemId", cartController.UpdateItemQuantity)
 
 	// Order routes
 	orderController := apis.NewOrderController(orderService)

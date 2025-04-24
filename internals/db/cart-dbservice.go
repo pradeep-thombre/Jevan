@@ -6,8 +6,10 @@ import (
 	"Jevan/configs"
 	"Jevan/internals/models"
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type cDbService struct {
@@ -15,9 +17,8 @@ type cDbService struct {
 }
 
 type CartDbService interface {
-	AddToCart(ctx context.Context, cartId string, item *models.CartItem) error
 	GetCartById(ctx context.Context, cartId string) (*models.Cart, error)
-	DeleteItemFromCart(ctx context.Context, cartId string, itemId string) error
+	SaveCart(ctx context.Context, cart *models.Cart) error
 	DeleteAllItemsFromCart(ctx context.Context, cartId string) error
 }
 
@@ -27,51 +28,17 @@ func NewCartDbService(dbclient appdb.DatabaseClient) CartDbService {
 	}
 }
 
-// Add item to a cart
-func (c *cDbService) AddToCart(ctx context.Context, cartId string, item *models.CartItem) error {
-	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Executing AddToCart, cartId: %s", cartId)
-
-	// Find the cart by cartId
-	var cart models.Cart
-	filter := bson.M{"cartId": cartId}
-	dbError := c.ucollection.FindOne(ctx, filter, &cart)
-	if dbError != nil {
-		if dbError.Error() == "mongo: no documents in result" {
-			// Cart not found, create a new one
-			cart.ID = cartId
-			cart.Items = []models.CartItem{*item}
-			_, insertError := c.ucollection.InsertOne(ctx, &cart)
-			if insertError != nil {
-				logger.Error(insertError)
-				return insertError
-			}
-			return nil
-		}
-		logger.Error(dbError)
-		return dbError
-	}
-
-	// If cart exists, add the item to the cart
-	cart.Items = append(cart.Items, *item)
-	update := bson.M{"$set": bson.M{"items": cart.Items}}
-	_, updateError := c.ucollection.UpdateOne(ctx, filter, update)
-	if updateError != nil {
-		logger.Error(updateError)
-		return updateError
-	}
-
-	logger.Infof("Executed AddToCart, cartId: %s", cartId)
-	return nil
-}
-
 // Get Cart by cartId
 func (c *cDbService) GetCartById(ctx context.Context, cartId string) (*models.Cart, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing GetCartById, cartId: %s", cartId)
 
 	var cart models.Cart
-	filter := bson.M{"cartId": cartId}
+	cartObjId, oerror := primitive.ObjectIDFromHex(cartId)
+	if oerror != nil {
+		return nil, errors.New("error: invalid id provided")
+	}
+	filter := bson.M{"_id": cartObjId}
 	dbError := c.ucollection.FindOne(ctx, filter, &cart)
 	if dbError != nil {
 		logger.Error(dbError)
@@ -82,31 +49,16 @@ func (c *cDbService) GetCartById(ctx context.Context, cartId string) (*models.Ca
 	return &cart, nil
 }
 
-// Delete an item from cart by itemId
-func (c *cDbService) DeleteItemFromCart(ctx context.Context, cartId string, itemId string) error {
-	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Executing DeleteItemFromCart, cartId: %s, itemId: %s", cartId, itemId)
-
-	filter := bson.M{"cartId": cartId}
-	update := bson.M{"$pull": bson.M{"items": bson.M{"itemId": itemId}}}
-
-	_, dbError := c.ucollection.UpdateOne(ctx, filter, update)
-	if dbError != nil {
-		logger.Error(dbError)
-		return dbError
-	}
-
-	logger.Infof("Executed DeleteItemFromCart, cartId: %s, itemId: %s", cartId, itemId)
-	return nil
-}
-
 // Delete all items from the cart
 func (c *cDbService) DeleteAllItemsFromCart(ctx context.Context, cartId string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing DeleteAllItemsFromCart, cartId: %s", cartId)
-
-	filter := bson.M{"cartId": cartId}
-	update := bson.M{"$set": bson.M{"items": []models.CartItem{}}}
+	cartObjId, oerror := primitive.ObjectIDFromHex(cartId)
+	if oerror != nil {
+		return errors.New("error: invalid id provided")
+	}
+	filter := bson.M{"_id": cartObjId}
+	update := bson.M{"$set": bson.M{"items": []models.CartItem{}, "totalprice": 0}}
 
 	_, dbError := c.ucollection.UpdateOne(ctx, filter, update)
 	if dbError != nil {
@@ -115,5 +67,45 @@ func (c *cDbService) DeleteAllItemsFromCart(ctx context.Context, cartId string) 
 	}
 
 	logger.Infof("Executed DeleteAllItemsFromCart, cartId: %s", cartId)
+	return nil
+}
+
+func (c *cDbService) SaveCart(ctx context.Context, cart *models.Cart) error {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
+	logger.Infof("Executing SaveCart")
+
+	if cart.ID.IsZero() {
+		logger.Error("Cart ID is required")
+		return errors.New("cart ID is required")
+	}
+
+	filter := bson.M{"_id": cart.ID}
+	var existing models.Cart
+
+	err := c.ucollection.FindOne(ctx, filter, &existing)
+	if err != nil {
+		if err.Error() == "mongo: no documents in result" {
+			// No document found, insert as new
+			_, insertErr := c.ucollection.InsertOne(ctx, cart)
+			if insertErr != nil {
+				logger.Error(insertErr)
+				return insertErr
+			}
+			logger.Infof("Inserted new cart with ID: %s", cart.ID.Hex())
+			return nil
+		}
+		logger.Error(err)
+		return err
+	}
+
+	// Document exists, update it
+	update := bson.M{"$set": cart}
+	_, updateErr := c.ucollection.UpdateOne(ctx, filter, update)
+	if updateErr != nil {
+		logger.Error(updateErr)
+		return updateErr
+	}
+
+	logger.Infof("Updated existing cart with ID: %s", cart.ID.Hex())
 	return nil
 }

@@ -34,7 +34,7 @@ func NewProductDbService(client appdb.DatabaseClient) ProductDbService {
 
 func (p *productDb) CreateProduct(ctx context.Context, product *dbmodel.ProductSchema) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Creating product: %+v", product)
+	logger.Infof("Creating product: %v", product)
 
 	result, err := p.collection.InsertOne(ctx, product)
 	if err != nil {

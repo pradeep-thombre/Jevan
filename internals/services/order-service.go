@@ -15,10 +15,10 @@ type OrderService interface {
 }
 
 type orderService struct {
-	dbservice db.DbService
+	dbservice db.OrderDbService
 }
 
-func NewOrderService(dbservice db.DbService) OrderService {
+func NewOrderService(dbservice db.OrderDbService) OrderService {
 	return &orderService{
 		dbservice: dbservice,
 	}

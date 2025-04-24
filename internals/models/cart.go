@@ -1,5 +1,7 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 // CartItem represents an item in the cart
 type CartItem struct {
 	ItemID   string  `json:"item_id"`
@@ -10,7 +12,7 @@ type CartItem struct {
 
 // Cart represents the structure of a user's cart
 type Cart struct {
-	ID     string     `json:"id"`
-	UserID string     `json:"user_id"`
-	Items  []CartItem `json:"items"`
+	ID         primitive.ObjectID `json:"id" bson:"_id"`
+	Items      []CartItem         `json:"items"`
+	TotalPrice float64            `json:"totalprice"`
 }
