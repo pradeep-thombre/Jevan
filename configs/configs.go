@@ -4,6 +4,8 @@ import (
 	"Jevan/commons/appdb"
 	"Jevan/commons/apploggers"
 	"context"
+	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -26,13 +28,32 @@ func NewApplicationConfig(context context.Context) error {
 		return err
 	}
 
-	// Create new mongo client and connect to the server
+	user := os.Getenv(MONGO_USER)
+	password := os.Getenv(MONGO_PASSWORD)
+	cluster := os.Getenv(MONGO_CLUSTER)
+
+	if user == "" || password == "" || cluster == "" {
+		return fmt.Errorf("missing MongoDB configuration values")
+	}
+
+	// URL-encode the password in case it contains special characters
+	encodedPassword := url.QueryEscape(password)
+
+	// Construct the URI
+	mongoURI := fmt.Sprintf("mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority&appName=Cluster0", user, encodedPassword, cluster)
+
 	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(os.Getenv(MONGO_URI)).SetServerAPIOptions(serverAPI)
-	client, cerror := mongo.Connect(context, opts)
-	if cerror != nil {
-		logger.Errorf("Error while connecting db, error: ", cerror)
-		panic(cerror)
+	opts := options.Client().ApplyURI(mongoURI).SetServerAPIOptions(serverAPI)
+
+	client, err := mongo.Connect(context, opts)
+	if err != nil {
+		logger.Errorf("MongoDB connection error: %v", err)
+		return err
+	}
+
+	if err := client.Ping(context, nil); err != nil {
+		logger.Errorf("MongoDB ping error: %v", err)
+		return err
 	}
 
 	logger.Info("You successfully connected to MongoDB!")

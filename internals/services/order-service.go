@@ -12,6 +12,7 @@ type OrderService interface {
 	CreateOrder(context context.Context, order *models.Order) (string, error)
 	GetOrderById(context context.Context, orderId string) (*models.Order, error)
 	UpdateOrder(context context.Context, orderId string, status *models.Order) error
+	GetAllOrders(context context.Context) ([]*models.Order, error)
 }
 
 type orderService struct {
@@ -24,11 +25,11 @@ func NewOrderService(dbservice db.OrderDbService) OrderService {
 	}
 }
 
-func (os *orderService) CreateOrder(context context.Context, order *models.Order) (string, error) {
-	logger := apploggers.GetLoggerWithCorrelationid(context)
+func (os *orderService) CreateOrder(ctx context.Context, order *models.Order) (string, error) {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Info("Executing CreateOrder")
 
-	orderID, err := os.dbservice.SaveOrder(context, order)
+	orderID, err := os.dbservice.SaveOrder(ctx, order)
 	if err != nil {
 		logger.Error(err)
 		return "", fmt.Errorf("error creating order: %s", err)
@@ -38,11 +39,11 @@ func (os *orderService) CreateOrder(context context.Context, order *models.Order
 	return orderID, nil
 }
 
-func (os *orderService) GetOrderById(context context.Context, orderId string) (*models.Order, error) {
-	logger := apploggers.GetLoggerWithCorrelationid(context)
+func (os *orderService) GetOrderById(ctx context.Context, orderId string) (*models.Order, error) {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing GetOrderById, orderId: %s", orderId)
 
-	order, err := os.dbservice.GetOrderById(context, orderId)
+	order, err := os.dbservice.GetOrderById(ctx, orderId)
 	if err != nil {
 		logger.Error(err)
 		return nil, fmt.Errorf("order not found: %s", err)
@@ -52,11 +53,11 @@ func (os *orderService) GetOrderById(context context.Context, orderId string) (*
 	return order, nil
 }
 
-func (os *orderService) UpdateOrder(context context.Context, orderId string, status *models.Order) error {
-	logger := apploggers.GetLoggerWithCorrelationid(context)
+func (os *orderService) UpdateOrder(ctx context.Context, orderId string, status *models.Order) error {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing UpdateOrder, orderId: %s", orderId)
 
-	err := os.dbservice.UpdateOrderStatus(context, orderId, status)
+	err := os.dbservice.UpdateOrderStatus(ctx, orderId, status)
 	if err != nil {
 		logger.Error(err)
 		return fmt.Errorf("error updating order status: %s", err)
@@ -64,4 +65,18 @@ func (os *orderService) UpdateOrder(context context.Context, orderId string, sta
 
 	logger.Infof("Executed UpdateOrder, orderId: %s", orderId)
 	return nil
+}
+
+func (os *orderService) GetAllOrders(ctx context.Context) ([]*models.Order, error) {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
+	logger.Info("Executing GetAllOrders")
+
+	orders, err := os.dbservice.GetAllOrders(ctx)
+	if err != nil {
+		logger.Error(err)
+		return nil, fmt.Errorf("error fetching orders: %s", err)
+	}
+
+	logger.Infof("Executed GetAllOrders, total: %d", len(orders))
+	return orders, nil
 }

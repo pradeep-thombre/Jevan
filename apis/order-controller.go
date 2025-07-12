@@ -117,3 +117,30 @@ func (oc *OrderController) UpdateOrder(c echo.Context) error {
 	logger.Infof("Executed UpdateOrder, orderId: %s", orderId)
 	return c.NoContent(http.StatusOK)
 }
+
+// @Tags Order Management
+// @Summary GetAllOrders
+// @Description Get all orders
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} commons.ApiErrorResponsePayload
+// @Router /orders [get]
+func (oc *OrderController) GetAllOrders(c echo.Context) error {
+	lcontext, logger := apploggers.GetLoggerFromEcho(c)
+	logger.Info("Executing GetAllOrders")
+
+	orders, err := oc.oservice.GetAllOrders(lcontext)
+	if err != nil {
+		logger.Error(err)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
+	}
+
+	response := map[string]interface{}{
+		"total":  len(orders),
+		"orders": orders,
+	}
+
+	logger.Infof("Executed GetAllOrders, total: %d", len(orders))
+	return c.JSON(http.StatusOK, response)
+}

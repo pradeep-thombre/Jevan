@@ -9,12 +9,14 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type OrderDbService interface {
 	SaveOrder(ctx context.Context, order *models.Order) (string, error)
 	GetOrderById(ctx context.Context, orderId string) (*models.Order, error)
 	UpdateOrderStatus(ctx context.Context, orderId string, status *models.Order) error
+	GetAllOrders(ctx context.Context) ([]*models.Order, error)
 }
 
 type orderDbService struct {
@@ -83,4 +85,21 @@ func (o *orderDbService) UpdateOrderStatus(ctx context.Context, orderId string, 
 
 	logger.Infof("Executed UpdateOrderStatus, orderId: %s", orderId)
 	return nil
+}
+
+func (o *orderDbService) GetAllOrders(ctx context.Context) ([]*models.Order, error) {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
+	logger.Info("Executing GetAllOrders")
+
+	var orders []*models.Order
+	filter := bson.M{}
+	options := &options.FindOptions{}
+	err := o.ucollection.Find(ctx, filter, options, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	logger.Infof("Executed GetAllOrders, total fetched: %d", len(orders))
+	return orders, nil
 }
