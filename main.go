@@ -11,6 +11,7 @@ import (
 	"context"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
@@ -45,6 +46,9 @@ func main() {
 	// Echo instance
 	e := echo.New()
 
+	// CORS middleware
+	e.Use(middleware.CORS())
+
 	// user api Routes
 	userController := apis.NewUserController(eventService)
 	e.GET("/users", userController.GetUsers)
@@ -71,6 +75,7 @@ func main() {
 	// Order routes
 	orderController := apis.NewOrderController(orderService)
 	e.POST("/orders", orderController.CreateOrder)
+	e.GET("/orders", orderController.GetAllOrders)
 	e.GET("/orders/:id", orderController.GetOrderById)
 	e.PUT("/orders/:id", orderController.UpdateOrder)
 

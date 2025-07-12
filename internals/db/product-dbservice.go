@@ -4,7 +4,6 @@ import (
 	"Jevan/commons/appdb"
 	"Jevan/commons/apploggers"
 	"Jevan/configs"
-	dbmodel "Jevan/internals/db/models"
 	"Jevan/internals/models"
 	"context"
 	"fmt"
@@ -15,9 +14,9 @@ import (
 )
 
 type ProductDbService interface {
-	CreateProduct(ctx context.Context, product *dbmodel.ProductSchema) (string, error)
+	CreateProduct(ctx context.Context, product *models.Product) (string, error)
 	GetAllProducts(ctx context.Context) ([]*models.Product, error)
-	UpdateProduct(ctx context.Context, product *dbmodel.ProductSchema, id string) error
+	UpdateProduct(ctx context.Context, product *models.Product, id string) error
 	GetProductById(ctx context.Context, id string) (*models.Product, error)
 	DeleteProductById(ctx context.Context, id string) error
 }
@@ -32,7 +31,7 @@ func NewProductDbService(client appdb.DatabaseClient) ProductDbService {
 	}
 }
 
-func (p *productDb) CreateProduct(ctx context.Context, product *dbmodel.ProductSchema) (string, error) {
+func (p *productDb) CreateProduct(ctx context.Context, product *models.Product) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Creating product: %v", product)
 
@@ -62,9 +61,9 @@ func (p *productDb) GetAllProducts(ctx context.Context) ([]*models.Product, erro
 	return products, nil
 }
 
-func (p *productDb) UpdateProduct(ctx context.Context, product *dbmodel.ProductSchema, id string) error {
+func (p *productDb) UpdateProduct(ctx context.Context, product *models.Product, id string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Updating product with ID: %s", id)
+	logger.Infof("Updating product with ID: %s, %v", id, product)
 
 	objId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
