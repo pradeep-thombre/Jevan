@@ -12,10 +12,10 @@ import (
 )
 
 type ucontroller struct {
-	eservice services.EventService
+	eservice services.UserService
 }
 
-func NewUserController(eservice services.EventService) ucontroller {
+func NewUserController(eservice services.UserService) ucontroller {
 	return ucontroller{
 		eservice: eservice,
 	}

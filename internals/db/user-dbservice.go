@@ -8,6 +8,7 @@ import (
 	dbmodel "Jevan/internals/db/models"
 	"Jevan/internals/models"
 	"context"
+	"errors"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,6 +26,9 @@ type UserDbService interface {
 	GetUsers(ctx context.Context) ([]*models.User, error)
 	SaveUser(ctx context.Context, user *dbmodel.UserSchema) (string, error)
 	UpdateUser(ctx context.Context, user *dbmodel.UserSchema, userId string) error
+	CreateUser(ctx context.Context, user *models.UserDetails) error
+	GetUserByEmail(ctx context.Context, email string) (*models.UserDetails, error)
+	UpdateUserRole(ctx context.Context, userID string, newRole string) error
 }
 
 func NewUserDbService(dbclient appdb.DatabaseClient) UserDbService {
@@ -122,4 +126,47 @@ func (u *udbservice) UpdateUser(ctx context.Context, user *dbmodel.UserSchema, u
 
 	logger.Infof("Executed UpdateUser, userid: %s", commons.PrintStruct(user))
 	return nil
+}
+
+func (u *udbservice) CreateUser(ctx context.Context, user *models.UserDetails) error {
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
+	logger.Infof("Creating user: %s", user.Email)
+
+	// check if user exists
+	var existing models.UserDetails
+	err := u.ucollection.FindOne(ctx, bson.M{"email": user.Email}, &existing)
+	if err == nil {
+		return errors.New("user already exists")
+	}
+
+	_, err = u.ucollection.InsertOne(ctx, user)
+	if err != nil {
+		logger.Error("Failed to create user: ", err)
+		return err
+	}
+
+	logger.Info("User created successfully")
+	return nil
+}
+
+func (u *udbservice) GetUserByEmail(ctx context.Context, email string) (*models.UserDetails, error) {
+	var user models.UserDetails
+	err := u.ucollection.FindOne(ctx, bson.M{"email": email}, &user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (u *udbservice) UpdateUserRole(ctx context.Context, userID string, newRole string) error {
+	objId, err := primitive.ObjectIDFromHex(userID)
+	logger := apploggers.GetLoggerWithCorrelationid(ctx)
+	logger.Infof("Updating user role for ID: %s to %s", userID, newRole)
+	if err != nil {
+		return err
+	}
+
+	update := bson.M{"$set": bson.M{"role": newRole}}
+	_, err = u.ucollection.UpdateOne(ctx, bson.M{"_id": objId}, update)
+	return err
 }

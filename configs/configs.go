@@ -18,8 +18,9 @@ var (
 )
 
 type ApplicationConfig struct {
-	HttpPort string
-	DbClient appdb.DatabaseClient
+	HttpPort  string
+	JwtSecret string
+	DbClient  appdb.DatabaseClient
 }
 
 func NewApplicationConfig(context context.Context) error {
@@ -59,8 +60,9 @@ func NewApplicationConfig(context context.Context) error {
 	logger.Info("You successfully connected to MongoDB!")
 	dbClient := appdb.NewDatabaseClient(os.Getenv(MONGO_DATABASE), client)
 	AppConfig = &ApplicationConfig{
-		HttpPort: os.Getenv(HTTP_PORT),
-		DbClient: dbClient,
+		HttpPort:  os.Getenv(HTTP_PORT),
+		DbClient:  dbClient,
+		JwtSecret: os.Getenv(JWT_SECRET),
 	}
 	return nil
 }
