@@ -86,7 +86,6 @@ func main() {
 	// Auth-Protected User Actions
 	userPrivate := e.Group("/users", jwtMiddleware)
 	userPrivate.DELETE(":id", userController.DeleteUserById)
-	userPrivate.POST("", userController.CreateUser)
 	userPrivate.PATCH(":id", userController.UpdateUser)
 
 	// Product Routes

@@ -24,9 +24,9 @@ type UserDbService interface {
 	GetUserById(ctx context.Context, id string) (*models.User, error)
 	DeleteUserById(ctx context.Context, id string) error
 	GetUsers(ctx context.Context) ([]*models.User, error)
-	SaveUser(ctx context.Context, user *dbmodel.UserSchema) (string, error)
+	CreateUserProfile(ctx context.Context, user *dbmodel.UserSchema) (string, error)
 	UpdateUser(ctx context.Context, user *dbmodel.UserSchema, userId string) error
-	CreateUser(ctx context.Context, user *models.UserDetails) error
+	RegisterUser(ctx context.Context, user *models.UserDetails) error
 	GetUserByEmail(ctx context.Context, email string) (*models.UserDetails, error)
 	UpdateUserRole(ctx context.Context, userID string, newRole string) error
 }
@@ -90,7 +90,7 @@ func (u *udbservice) GetUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (u *udbservice) SaveUser(ctx context.Context, user *dbmodel.UserSchema) (string, error) {
+func (u *udbservice) CreateUserProfile(ctx context.Context, user *dbmodel.UserSchema) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing SaveUser...")
 
@@ -128,7 +128,7 @@ func (u *udbservice) UpdateUser(ctx context.Context, user *dbmodel.UserSchema, u
 	return nil
 }
 
-func (u *udbservice) CreateUser(ctx context.Context, user *models.UserDetails) error {
+func (u *udbservice) RegisterUser(ctx context.Context, user *models.UserDetails) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Creating user: %s", user.Email)
 

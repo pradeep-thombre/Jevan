@@ -30,21 +30,42 @@ func NewAuthController(userService services.UserService) *AuthController {
 // @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /register [post]
 func (ac *AuthController) Register(c echo.Context) error {
+	lcontext, logger := apploggers.GetLoggerFromEcho(c)
+	logger.Info("Received registration request")
 	var user models.UserDetails
 	if err := c.Bind(&user); err != nil {
+		logger.Error("Invalid request body: ", err)
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
 	}
 
 	if errs := commons.ValidateStruct(user); errs != nil {
+		logger.Error("Validation error: ", errs)
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation error: "+errs.Error(), nil))
 	}
 
-	err := ac.userService.RegisterUser(c.Request().Context(), &user)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
+	if err := ac.userService.RegisterUser(lcontext, user.Email, user.Password); err != nil {
+		logger.Error("Registration failed: ", err)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Registration failed: "+err.Error(), nil))
 	}
 
-	return c.JSON(http.StatusCreated, map[string]string{"message": "Registered successfully"})
+	userInfo := &models.User{
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+	}
+	// Create user profile in the database
+	logger.Info("Creating user profile for: ", user.Email)
+	id, err := ac.userService.CreateUserProfile(lcontext, userInfo)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Failed to create user profile: "+err.Error(), nil))
+	}
+
+	logger.Info("User registered successfully with ID: ", id)
+	return c.JSON(http.StatusCreated, map[string]string{
+		"message": "Registered successfully",
+		"id":      id,
+	})
+
 }
 
 // @Summary Login User
@@ -56,7 +77,7 @@ func (ac *AuthController) Register(c echo.Context) error {
 // @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /login [post]
 func (ac *AuthController) Login(c echo.Context) error {
-	logger := apploggers.GetLoggerWithCorrelationid(c.Request().Context())
+	lcontext, logger := apploggers.GetLoggerFromEcho(c)
 	var creds models.UserDetails
 	if err := c.Bind(&creds); err != nil {
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
@@ -67,7 +88,7 @@ func (ac *AuthController) Login(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation error: "+errs.Error(), nil))
 	}
 
-	role, ok, err := ac.userService.AuthenticateUser(c.Request().Context(), creds.Email, creds.Password)
+	role, ok, err := ac.userService.AuthenticateUser(lcontext, creds.Email, creds.Password)
 	if err != nil || !ok {
 		return c.JSON(http.StatusUnauthorized, commons.ApiErrorResponse("Invalid credentials", nil))
 	}
@@ -101,7 +122,10 @@ func (ac *AuthController) Login(c echo.Context) error {
 // @Security BearerAuth
 // @Router /admin/users/{id}/role [put]
 func (ac *AuthController) UpdateUserRole(c echo.Context) error {
+	lcontext, logger := apploggers.GetLoggerFromEcho(c)
 	id := c.Param("id")
+
+	logger.Info("Received request to update role for user ID: ", id)
 	var body models.UpdateUserRoleRequest
 
 	if err := c.Bind(&body); err != nil {
@@ -112,7 +136,7 @@ func (ac *AuthController) UpdateUserRole(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
 	}
 
-	err := ac.userService.UpdateUserRole(c.Request().Context(), id, body.Role)
+	err := ac.userService.UpdateUserRole(lcontext, id, body.Role)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}

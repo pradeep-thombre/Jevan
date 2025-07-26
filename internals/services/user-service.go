@@ -17,9 +17,9 @@ type UserService interface {
 	GetUserById(context context.Context, userId string) (*models.User, error)
 	DeleteUserById(context context.Context, userId string) error
 	GetUsers(context context.Context) ([]*models.User, error)
-	CreateUser(context context.Context, user *models.User) (string, error)
+	CreateUserProfile(context context.Context, user *models.User) (string, error)
 	UpdateUser(context context.Context, user *models.User, userId string) error
-	RegisterUser(ctx context.Context, user *models.UserDetails) error
+	RegisterUser(ctx context.Context, email, password string) error
 	AuthenticateUser(ctx context.Context, email, password string) (string, bool, error)
 	UpdateUserRole(ctx context.Context, userID, newRole string) error
 }
@@ -70,9 +70,9 @@ func (e *userService) GetUsers(context context.Context) ([]*models.User, error) 
 	return users, nil
 }
 
-func (e *userService) CreateUser(context context.Context, user *models.User) (string, error) {
+func (e *userService) CreateUserProfile(context context.Context, user *models.User) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(context)
-	logger.Infof("Executing CreateUser...")
+	logger.Infof("Executing CreateUserProfile...")
 	var userSchema *dbmodel.UserSchema
 	pbyes, _ := json.Marshal(user)
 	uerror := json.Unmarshal(pbyes, &userSchema)
@@ -80,12 +80,12 @@ func (e *userService) CreateUser(context context.Context, user *models.User) (st
 		logger.Error(uerror.Error())
 		return "", uerror
 	}
-	userId, dberror := e.dbservice.SaveUser(context, userSchema)
+	userId, dberror := e.dbservice.CreateUserProfile(context, userSchema)
 	if dberror != nil {
 		logger.Error(dberror)
 		return "", dberror
 	}
-	logger.Infof("Executed CreateUser, userId: %v", userId)
+	logger.Infof("Executed CreateUserProfile, userId: %v", userId)
 	return userId, nil
 }
 
@@ -108,19 +108,21 @@ func (e *userService) UpdateUser(context context.Context, user *models.User, use
 	return nil
 }
 
-func (s *userService) RegisterUser(ctx context.Context, user *models.UserDetails) error {
+func (s *userService) RegisterUser(ctx context.Context, email, password string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-
-	// hash password
-	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.Error("Password hashing failed: ", err)
 		return err
 	}
-	user.Password = string(hashed)
-	user.Role = "user"
 
-	err = s.dbservice.CreateUser(ctx, user)
+	user := &models.UserDetails{
+		Email:    email,
+		Password: string(hashed),
+		Role:     "user",
+	}
+
+	err = s.dbservice.RegisterUser(ctx, user)
 	if err != nil {
 		logger.Error("Failed to register user: ", err)
 		return err
