@@ -12,10 +12,10 @@ import (
 )
 
 type ucontroller struct {
-	eservice services.EventService
+	eservice services.UserService
 }
 
-func NewUserController(eservice services.EventService) ucontroller {
+func NewUserController(eservice services.UserService) ucontroller {
 	return ucontroller{
 		eservice: eservice,
 	}
@@ -97,45 +97,6 @@ func (u *ucontroller) GetUsers(c echo.Context) error {
 }
 
 // @Tags User Management
-// @Summary CreateUser
-// @Description Create a user with name, email, age, and is_Active status
-// @Accept json
-// @Produce json
-// @Param payload body models.User true "User data"
-// @Success 201 {object} map[string]interface{}
-// @Failure 400 {object} commons.ApiErrorResponsePayload
-// @Router /users [post]
-func (u *ucontroller) CreateUser(c echo.Context) error {
-	lcontext, logger := apploggers.GetLoggerFromEcho(c)
-	logger.Info("Executing CreateUser")
-	var user *models.User
-	err := c.Bind(&user)
-	if err != nil || user == nil {
-		logger.Error("invalid request payload")
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("invalid request payload", nil))
-	}
-
-	if len(strings.TrimSpace(user.Name)) == 0 {
-		logger.Error("'name' is required")
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'name' is required", nil))
-	}
-
-	if len(strings.TrimSpace(user.Email)) == 0 {
-		logger.Error("'email' is required")
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'email' is required", nil))
-	}
-	Id, serror := u.eservice.CreateUser(lcontext, user)
-	if serror != nil {
-		logger.Error(serror)
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse(serror.Error(), nil))
-	}
-	logger.Info("Executed CreateUser")
-	return c.JSON(http.StatusCreated, map[string]string{
-		"id": Id,
-	})
-}
-
-// @Tags User Management
 // @Summary UpdateUser
 // @Description update user details such as name, email, age, and is_Active status bu user id
 // @Accept json
@@ -160,9 +121,14 @@ func (u *ucontroller) UpdateUser(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("invalid request payload", nil))
 	}
 
-	if len(strings.TrimSpace(user.Name)) == 0 {
-		logger.Error("'name' is required")
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'name' is required", nil))
+	if len(strings.TrimSpace(user.FirstName)) == 0 {
+		logger.Error("'firstName' is required")
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'firstName' is required", nil))
+	}
+
+	if len(strings.TrimSpace(user.LastName)) == 0 {
+		logger.Error("'lastName' is required")
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("'lastName' is required", nil))
 	}
 
 	if len(strings.TrimSpace(user.Email)) == 0 {

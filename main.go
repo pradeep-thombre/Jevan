@@ -2,6 +2,7 @@ package main
 
 import (
 	"Jevan/apis"
+	"Jevan/apis/middlewares"
 	"Jevan/internals/db"
 	"Jevan/internals/services"
 
@@ -22,6 +23,9 @@ import (
 // @contact.email support@jevan.app
 // @host localhost:3000
 // @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Set up logging and context
 	ctx, logger := apploggers.NewLoggerWithCorrelationid(context.Background(), "")
@@ -35,49 +39,28 @@ func main() {
 	cartDbService := db.NewCartDbService(configs.AppConfig.DbClient)
 	orderDbService := db.NewOrderDbService(configs.AppConfig.DbClient)
 	productDbService := db.NewProductDbService(configs.AppConfig.DbClient)
-	dbservice := db.NewUserDbService(configs.AppConfig.DbClient)
+	userDbService := db.NewUserDbService(configs.AppConfig.DbClient)
 
 	// Initialize services
 	productService := services.NewProductService(productDbService)
 	cartService := services.NewCartService(cartDbService)
 	orderService := services.NewOrderService(orderDbService)
-	eventService := services.NewUserEventService(dbservice)
+	userService := services.NewUserService(userDbService)
 
-	// Echo instance
+	// Controllers
+	productController := apis.NewProductController(productService)
+	cartController := apis.NewCartController(cartService)
+	orderController := apis.NewOrderController(orderService)
+	userController := apis.NewUserController(userService)
+	authController := apis.NewAuthController(userService)
+
 	e := echo.New()
 
-	// CORS middleware
 	e.Use(middleware.CORS())
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	// user api Routes
-	userController := apis.NewUserController(eventService)
-	e.GET("/users", userController.GetUsers)
-	e.GET("/users/:id", userController.GetUserById)
-	e.DELETE("/users/:id", userController.DeleteUserById)
-	e.POST("/users", userController.CreateUser)
-	e.PATCH("/users/:id", userController.UpdateUser)
-
-	// Product routes
-	productController := apis.NewProductController(productService)
-	e.POST("/products", productController.CreateProduct)
-	e.GET("/products", productController.GetAllProducts)
-	e.PUT("/products/:id", productController.UpdateProduct)
-	e.GET("/products/:id", productController.GetProductById)
-	e.DELETE("/products/:id", productController.DeleteProductById)
-
-	// Cart routes
-	cartController := apis.NewCartController(cartService)
-	e.POST("/cart", cartController.UpdateCart)
-	e.GET("/cart/:id", cartController.GetCartItemsById)
-	e.DELETE("/cart/:id/all", cartController.DeleteAllItems)
-	e.PUT("/cart/:cartId/item/:itemId", cartController.UpdateItemQuantity)
-
-	// Order routes
-	orderController := apis.NewOrderController(orderService)
-	e.POST("/orders", orderController.CreateOrder)
-	e.GET("/orders", orderController.GetAllOrders)
-	e.GET("/orders/:id", orderController.GetOrderById)
-	e.PUT("/orders/:id", orderController.UpdateOrder)
+	jwtMiddleware := middlewares.JWTMiddleware()
 
 	// Swagger
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
@@ -87,7 +70,48 @@ func main() {
 		return c.String(200, "Jevan API is healthy!")
 	})
 
-	// Start server
+	// Auth
+	e.POST("/login", authController.Login)
+	e.POST("/register", authController.Register)
+
+	// Admin-only endpoints
+	admin := e.Group("/admin")
+	admin.Use(jwtMiddleware, middlewares.AdminOnly)
+	admin.PUT("/users/:id/role", authController.UpdateUserRole)
+
+	// Public Routes
+	e.GET("/users", userController.GetUsers)
+	e.GET("/users/:id", userController.GetUserById)
+
+	// Auth-Protected User Actions
+	userPrivate := e.Group("/users", jwtMiddleware)
+	userPrivate.DELETE(":id", userController.DeleteUserById)
+	userPrivate.PATCH(":id", userController.UpdateUser)
+
+	// Product Routes
+	productPublic := e.Group("/products")
+	productPublic.GET("", productController.GetAllProducts)
+	productPublic.GET(":id", productController.GetProductById)
+
+	productPrivate := e.Group("/products", jwtMiddleware)
+	productPrivate.POST("", productController.CreateProduct)
+	productPrivate.PUT(":id", productController.UpdateProduct)
+	productPrivate.DELETE(":id", productController.DeleteProductById)
+
+	// Cart Routes
+	cart := e.Group("/cart", jwtMiddleware)
+	cart.POST("", cartController.UpdateCart)
+	cart.GET(":id", cartController.GetCartItemsById)
+	cart.DELETE(":id/all", cartController.DeleteAllItems)
+	cart.PUT(":cartId/item/:itemId", cartController.UpdateItemQuantity)
+
+	// Order Routes
+	order := e.Group("/orders", jwtMiddleware)
+	order.POST("", orderController.CreateOrder)
+	order.GET("", orderController.GetAllOrders)
+	order.GET(":id", orderController.GetOrderById)
+	order.PUT(":id", orderController.UpdateOrder)
+
 	logger.Infof("Starting Jevan API server on port %s", configs.AppConfig.HttpPort)
 	e.Logger.Fatal(e.Start(":" + configs.AppConfig.HttpPort))
 }
