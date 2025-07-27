@@ -15,15 +15,23 @@ type User struct {
 
 type UserDetails struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	FirstName string             `bson:"firstName" json:"firstName" validate:"required"`
-	LastName  string             `bson:"lastName" json:"lastName" validate:"required"`
+	FirstName string             `bson:"firstName,omitempty" json:"firstName,omitempty" validate:"required"`
+	LastName  string             `bson:"lastName,omitempty" json:"lastName,omitempty" validate:"required"`
 	Email     string             `bson:"email" json:"email" validate:"required,email"`
 	Password  string             `bson:"password" json:"password,omitempty" validate:"required,min=6"`
 	Role      string             `bson:"role" json:"role" validate:"omitempty,oneof=admin user"`
 }
 
+type UserLoginRequest struct {
+	Email    string `bson:"email" json:"email" validate:"required,email"`
+	Password string `bson:"password" json:"password,omitempty" validate:"required,min=6"`
+}
+
 type UserLoginResponse struct {
-	Token string `json:"token"`
+	UserId string `json:"userId"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+	Token  string `json:"token"`
 }
 
 type UpdateUserRoleRequest struct {

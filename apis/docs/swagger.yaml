@@ -81,6 +81,16 @@ definitions:
       price:
         type: number
     type: object
+  models.UpdateUserRoleRequest:
+    properties:
+      role:
+        enum:
+        - admin
+        - user
+        type: string
+    required:
+    - role
+    type: object
   models.User:
     properties:
       _id:
@@ -91,14 +101,60 @@ definitions:
         type: string
       email:
         type: string
+      firstName:
+        type: string
       is_active:
         type: boolean
-      name:
+      lastName:
         type: string
       type:
         type: string
+    required:
+    - email
+    - firstName
+    - lastName
     type: object
-host: localhost:3000
+  models.UserDetails:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        enum:
+        - admin
+        - user
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
+    type: object
+  models.UserLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.UserLoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
+host: localhost:8000
 info:
   contact:
     email: support@jevan.app
@@ -107,6 +163,49 @@ info:
   title: Jevan - Mess Management API
   version: "1.0"
 paths:
+  /admin/users/{id}/role:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New role (admin or user)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request or validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Update user role (admin only)
+      tags:
+      - Auth
   /cart:
     post:
       consumes:
@@ -236,7 +335,51 @@ paths:
       summary: Delete all items from cart
       tags:
       - Cart
+  /login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserLoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
+      summary: Login User
+      tags:
+      - Auth
   /orders:
+    get:
+      consumes:
+      - application/json
+      description: Get all orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
+      summary: GetAllOrders
+      tags:
+      - Order Management
     post:
       consumes:
       - application/json
@@ -325,9 +468,8 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Product'
-            type: array
+            additionalProperties: true
+            type: object
       summary: Get All Products
       tags:
       - Product
@@ -427,8 +569,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "400":
           description: Bad Request
@@ -437,6 +578,31 @@ paths:
       summary: Update Product
       tags:
       - Product
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User registration data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserDetails'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Registered successfully
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/commons.ApiErrorResponsePayload'
+      summary: Register User
+      tags:
+      - Auth
   /users:
     get:
       consumes:
@@ -448,40 +614,13 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.User'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/commons.ApiErrorResponsePayload'
-      summary: GetUsers
-      tags:
-      - User Management
-    post:
-      consumes:
-      - application/json
-      description: Create a user with name, email, age, and is_Active status
-      parameters:
-      - description: User data
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/models.User'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
             additionalProperties: true
             type: object
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/commons.ApiErrorResponsePayload'
-      summary: CreateUser
+      summary: GetUsers
       tags:
       - User Management
   /users/{id}:
@@ -560,4 +699,9 @@ paths:
       summary: UpdateUser
       tags:
       - User Management
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

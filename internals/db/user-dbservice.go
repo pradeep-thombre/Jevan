@@ -5,7 +5,6 @@ import (
 	"Jevan/commons/appdb"
 	"Jevan/commons/apploggers"
 	"Jevan/configs"
-	dbmodel "Jevan/internals/db/models"
 	"Jevan/internals/models"
 	"context"
 	"errors"
@@ -18,15 +17,16 @@ import (
 
 type udbservice struct {
 	ucollection appdb.DatabaseCollection
+	dcollection appdb.DatabaseCollection
 }
 
 type UserDbService interface {
 	GetUserById(ctx context.Context, id string) (*models.User, error)
 	DeleteUserById(ctx context.Context, id string) error
-	GetUsers(ctx context.Context) ([]*models.User, error)
-	CreateUserProfile(ctx context.Context, user *dbmodel.UserSchema) (string, error)
-	UpdateUser(ctx context.Context, user *dbmodel.UserSchema, userId string) error
-	RegisterUser(ctx context.Context, user *models.UserDetails) error
+	GetUsers(ctx context.Context) ([]models.User, error)
+	CreateUserProfile(ctx context.Context, user *models.User) (string, error)
+	UpdateUser(ctx context.Context, user *models.User, userId string) error
+	RegisterUser(ctx context.Context, user *models.UserDetails) (string, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.UserDetails, error)
 	UpdateUserRole(ctx context.Context, userID string, newRole string) error
 }
@@ -34,6 +34,7 @@ type UserDbService interface {
 func NewUserDbService(dbclient appdb.DatabaseClient) UserDbService {
 	return &udbservice{
 		ucollection: dbclient.Collection(configs.MONGO_USERS_COLLECTION),
+		dcollection: dbclient.Collection(configs.MONGO_USERDETAILS_COLLECTION),
 	}
 }
 
@@ -47,7 +48,7 @@ func (u *udbservice) GetUserById(ctx context.Context, userId string) (*models.Us
 	}
 	var user *models.User
 	var filter = bson.M{"_id": id}
-	dbError := u.ucollection.FindOne(ctx, filter, &user)
+	dbError := u.dcollection.FindOne(ctx, filter, &user)
 	if dbError != nil {
 		logger.Error(dbError)
 		return nil, dbError
@@ -65,7 +66,7 @@ func (u *udbservice) DeleteUserById(ctx context.Context, userId string) error {
 		return fmt.Errorf("cannot delete user, invalid userid provided, userId: %s", userId)
 	}
 	var filter = bson.M{"_id": id}
-	_, dbError := u.ucollection.DeleteOne(ctx, filter)
+	_, dbError := u.dcollection.DeleteOne(ctx, filter)
 	if dbError != nil {
 		logger.Error(dbError)
 		return dbError
@@ -74,14 +75,14 @@ func (u *udbservice) DeleteUserById(ctx context.Context, userId string) error {
 	return nil
 }
 
-func (u *udbservice) GetUsers(ctx context.Context) ([]*models.User, error) {
+func (u *udbservice) GetUsers(ctx context.Context) ([]models.User, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing GetUsers")
 
 	// create users payload to find data from db
-	var users []*models.User
+	var users []models.User
 	var filter = map[string]interface{}{}
-	dbError := u.ucollection.Find(ctx, filter, &options.FindOptions{}, &users)
+	dbError := u.dcollection.Find(ctx, filter, &options.FindOptions{}, &users)
 	if dbError != nil {
 		logger.Error(dbError)
 		return nil, dbError
@@ -90,12 +91,12 @@ func (u *udbservice) GetUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (u *udbservice) CreateUserProfile(ctx context.Context, user *dbmodel.UserSchema) (string, error) {
+func (u *udbservice) CreateUserProfile(ctx context.Context, user *models.User) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing SaveUser...")
 
 	// insert user in db
-	result, dbError := u.ucollection.InsertOne(ctx, user)
+	result, dbError := u.dcollection.InsertOne(ctx, user)
 	if dbError != nil {
 		logger.Error(dbError)
 		return "", dbError
@@ -107,7 +108,7 @@ func (u *udbservice) CreateUserProfile(ctx context.Context, user *dbmodel.UserSc
 	return id, nil
 }
 
-func (u *udbservice) UpdateUser(ctx context.Context, user *dbmodel.UserSchema, userId string) error {
+func (u *udbservice) UpdateUser(ctx context.Context, user *models.User, userId string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Executing UpdateUser...")
 	// get object id from userid string
@@ -118,7 +119,7 @@ func (u *udbservice) UpdateUser(ctx context.Context, user *dbmodel.UserSchema, u
 	var filter = bson.M{"_id": id}
 	update := bson.M{"$set": user} // Correct update document
 	// update user in db
-	_, dbError := u.ucollection.UpdateOne(ctx, filter, update)
+	_, dbError := u.dcollection.UpdateOne(ctx, filter, update)
 	if dbError != nil {
 		logger.Error(dbError)
 		return dbError
@@ -128,7 +129,7 @@ func (u *udbservice) UpdateUser(ctx context.Context, user *dbmodel.UserSchema, u
 	return nil
 }
 
-func (u *udbservice) RegisterUser(ctx context.Context, user *models.UserDetails) error {
+func (u *udbservice) RegisterUser(ctx context.Context, user *models.UserDetails) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Creating user: %s", user.Email)
 
@@ -136,17 +137,17 @@ func (u *udbservice) RegisterUser(ctx context.Context, user *models.UserDetails)
 	var existing models.UserDetails
 	err := u.ucollection.FindOne(ctx, bson.M{"email": user.Email}, &existing)
 	if err == nil {
-		return errors.New("user already exists")
+		return "", errors.New("user already exists")
 	}
 
-	_, err = u.ucollection.InsertOne(ctx, user)
+	result, err := u.ucollection.InsertOne(ctx, user)
 	if err != nil {
 		logger.Error("Failed to create user: ", err)
-		return err
+		return "", err
 	}
-
-	logger.Info("User created successfully")
-	return nil
+	userId := result.InsertedID.(primitive.ObjectID).Hex()
+	logger.Infof("User created successfully with ID: %s", userId)
+	return userId, nil
 }
 
 func (u *udbservice) GetUserByEmail(ctx context.Context, email string) (*models.UserDetails, error) {
