@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AuthController struct {
@@ -35,29 +36,39 @@ func (ac *AuthController) Register(c echo.Context) error {
 	var user models.UserDetails
 	if err := c.Bind(&user); err != nil {
 		logger.Error("Invalid request body: ", err)
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body, Error: "+err.Error(), nil))
 	}
 
 	if errs := commons.ValidateStruct(user); errs != nil {
 		logger.Error("Validation error: ", errs)
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation error: "+errs.Error(), nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation Error: "+errs.Error(), nil))
 	}
 
-	if err := ac.userService.RegisterUser(lcontext, user.Email, user.Password); err != nil {
+	id, err := ac.userService.RegisterUser(lcontext, user.Email, user.Password)
+	if err != nil {
 		logger.Error("Registration failed: ", err)
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Registration failed: "+err.Error(), nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Registration failed, Error:"+err.Error(), nil))
+	}
+
+	userId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		logger.Error("Invalid user ID hex: ", err)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Error: Invalid user ID", nil))
 	}
 
 	userInfo := &models.User{
+		Id:        userId,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
+		Type:      "user",
 	}
+
 	// Create user profile in the database
 	logger.Info("Creating user profile for: ", user.Email)
-	id, err := ac.userService.CreateUserProfile(lcontext, userInfo)
+	id, err = ac.userService.CreateUserProfile(lcontext, userInfo)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Failed to create user profile: "+err.Error(), nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Error: Failed to create user profile: "+err.Error(), nil))
 	}
 
 	logger.Info("User registered successfully with ID: ", id)
@@ -72,40 +83,47 @@ func (ac *AuthController) Register(c echo.Context) error {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param credentials body models.UserDetails true "User credentials"
-// @Success 200 {object} models.UserDetails
+// @Param credentials body models.UserLoginRequest true "User credentials"
+// @Success 200 {object} models.UserLoginResponse
 // @Failure 400 {object} commons.ApiErrorResponsePayload
 // @Router /login [post]
 func (ac *AuthController) Login(c echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(c)
-	var creds models.UserDetails
+	var creds models.UserLoginRequest
 	if err := c.Bind(&creds); err != nil {
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body", nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request body, Error: "+err.Error(), nil))
 	}
 	logger.Info("Received login request for user: ", creds.Email)
 
+	// validate credentials
 	if errs := commons.ValidateStruct(creds); errs != nil {
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation error: "+errs.Error(), nil))
+		logger.Error("Validation error: ", errs)
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Validation Error: "+errs.Error(), nil))
 	}
 
-	role, ok, err := ac.userService.AuthenticateUser(lcontext, creds.Email, creds.Password)
+	user, ok, err := ac.userService.AuthenticateUser(lcontext, creds.Email, creds.Password)
 	if err != nil || !ok {
-		return c.JSON(http.StatusUnauthorized, commons.ApiErrorResponse("Invalid credentials", nil))
+		return c.JSON(http.StatusUnauthorized, commons.ApiErrorResponse("Error: Invalid credentials", nil))
 	}
 
 	claims := jwt.MapClaims{
 		"email": creds.Email,
-		"role":  role,
+		"role":  user.Role,
 		"exp":   time.Now().Add(time.Hour * 24).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(configs.AppConfig.JwtSecret))
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Token generation failed", nil))
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Token generation failed, Error: "+err.Error(), nil))
 	}
 	logger.Info("User logged in successfully: ", creds.Email)
-	return c.JSON(http.StatusOK, models.UserLoginResponse{Token: signed})
+	return c.JSON(http.StatusOK, models.UserLoginResponse{
+		Email:  creds.Email,
+		Role:   user.Role,
+		UserId: user.ID.Hex(),
+		Token:  signed,
+	})
 }
 
 // UpdateUserRole godoc
@@ -129,16 +147,16 @@ func (ac *AuthController) UpdateUserRole(c echo.Context) error {
 	var body models.UpdateUserRoleRequest
 
 	if err := c.Bind(&body); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "Invalid request"})
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request, Error: "+err.Error(), nil))
 	}
 
 	if err := commons.ValidateStruct(body); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Error(s): "+err.Error(), nil))
 	}
 
 	err := ac.userService.UpdateUserRole(lcontext, id, body.Role)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("failed to update user, Error: "+err.Error(), nil))
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "Role updated successfully"})
 }

@@ -21,7 +21,7 @@ import (
 // @description Backend APIs for Jevan mess application using Echo.
 // @contact.name API Support
 // @contact.email support@jevan.app
-// @host localhost:3000
+// @host localhost:8000
 // @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header

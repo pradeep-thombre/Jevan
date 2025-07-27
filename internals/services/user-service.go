@@ -3,24 +3,23 @@ package services
 import (
 	"Jevan/commons/apploggers"
 	"Jevan/internals/db"
-	dbmodel "Jevan/internals/db/models"
 	"Jevan/internals/models"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
 	GetUserById(context context.Context, userId string) (*models.User, error)
 	DeleteUserById(context context.Context, userId string) error
-	GetUsers(context context.Context) ([]*models.User, error)
+	GetUsers(context context.Context) ([]models.User, error)
 	CreateUserProfile(context context.Context, user *models.User) (string, error)
 	UpdateUser(context context.Context, user *models.User, userId string) error
-	RegisterUser(ctx context.Context, email, password string) error
-	AuthenticateUser(ctx context.Context, email, password string) (string, bool, error)
+	RegisterUser(ctx context.Context, email, password string) (string, error)
+	AuthenticateUser(ctx context.Context, email, password string) (*models.UserDetails, bool, error)
 	UpdateUserRole(ctx context.Context, userID, newRole string) error
 }
 
@@ -58,7 +57,7 @@ func (e *userService) DeleteUserById(context context.Context, userId string) err
 	return nil
 }
 
-func (e *userService) GetUsers(context context.Context) ([]*models.User, error) {
+func (e *userService) GetUsers(context context.Context) ([]models.User, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(context)
 	logger.Infof("Executing GetUsers...")
 	users, dberror := e.dbservice.GetUsers(context)
@@ -73,14 +72,9 @@ func (e *userService) GetUsers(context context.Context) ([]*models.User, error) 
 func (e *userService) CreateUserProfile(context context.Context, user *models.User) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(context)
 	logger.Infof("Executing CreateUserProfile...")
-	var userSchema *dbmodel.UserSchema
-	pbyes, _ := json.Marshal(user)
-	uerror := json.Unmarshal(pbyes, &userSchema)
-	if uerror != nil {
-		logger.Error(uerror.Error())
-		return "", uerror
-	}
-	userId, dberror := e.dbservice.CreateUserProfile(context, userSchema)
+
+	user.CartId = primitive.NewObjectID().Hex()
+	userId, dberror := e.dbservice.CreateUserProfile(context, user)
 	if dberror != nil {
 		logger.Error(dberror)
 		return "", dberror
@@ -92,14 +86,8 @@ func (e *userService) CreateUserProfile(context context.Context, user *models.Us
 func (e *userService) UpdateUser(context context.Context, user *models.User, userId string) error {
 	logger := apploggers.GetLoggerWithCorrelationid(context)
 	logger.Infof("Executing UpdateUser...")
-	var userSchema *dbmodel.UserSchema
-	pbyes, _ := json.Marshal(user)
-	uerror := json.Unmarshal(pbyes, &userSchema)
-	if uerror != nil {
-		logger.Error(uerror.Error())
-		return uerror
-	}
-	dberror := e.dbservice.UpdateUser(context, userSchema, userId)
+
+	dberror := e.dbservice.UpdateUser(context, user, userId)
 	if dberror != nil {
 		logger.Error(dberror)
 		return dberror
@@ -108,12 +96,12 @@ func (e *userService) UpdateUser(context context.Context, user *models.User, use
 	return nil
 }
 
-func (s *userService) RegisterUser(ctx context.Context, email, password string) error {
+func (s *userService) RegisterUser(ctx context.Context, email, password string) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.Error("Password hashing failed: ", err)
-		return err
+		return "", err
 	}
 
 	user := &models.UserDetails{
@@ -122,33 +110,33 @@ func (s *userService) RegisterUser(ctx context.Context, email, password string) 
 		Role:     "user",
 	}
 
-	err = s.dbservice.RegisterUser(ctx, user)
+	id, err := s.dbservice.RegisterUser(ctx, user)
 	if err != nil {
 		logger.Error("Failed to register user: ", err)
-		return err
+		return "", err
 	}
 
-	logger.Info("User registered successfully")
-	return nil
+	logger.Info("User registered successfully, Id: ", id)
+	return id, nil
 }
 
-func (s *userService) AuthenticateUser(ctx context.Context, email, password string) (string, bool, error) {
+func (s *userService) AuthenticateUser(ctx context.Context, email, password string) (*models.UserDetails, bool, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Infof("Authenticating user: %s", email)
 
 	user, err := s.dbservice.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", false, errors.New("user not found")
+		return nil, false, errors.New("user not found")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		logger.Error("Password mismatch")
-		return "", false, errors.New("invalid password")
+		return nil, false, errors.New("invalid password")
 	}
 
 	logger.Info("User authenticated successfully: ", email)
-	return user.Role, true, nil
+	return user, true, nil
 }
 
 func (s *userService) UpdateUserRole(ctx context.Context, userID string, newRole string) error {
