@@ -118,6 +118,7 @@ func (ac *AuthController) Login(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, commons.ApiErrorResponse("Token generation failed, Error: "+err.Error(), nil))
 	}
 	logger.Info("User logged in successfully: ", creds.Email)
+	logger.Info("Generated JWT token: ", signed)
 	return c.JSON(http.StatusOK, models.UserLoginResponse{
 		Email:  creds.Email,
 		Role:   user.Role,

@@ -8,6 +8,9 @@ type Product struct {
 	Description string             `json:"description" bson:"description"`
 	Price       float64            `json:"price" bson:"price"`
 	Category    string             `json:"category" bson:"category"`
-	ImageURL    string             `json:"image_url" bson:"image_url"`
-	IsAvailable bool               `json:"is_available" bson:"is_available"`
+	ImageURL    string             `json:"image" bson:"image"`
+	IsAvailable bool               `json:"isAvailable" bson:"isAvailable"`
+	Rating      float64            `json:"rating" bson:"rating"`
+	Type        string             `json:"type" bson:"type"`
+	MealTime    string             `json:"mealTime" bson:"mealTime"`
 }

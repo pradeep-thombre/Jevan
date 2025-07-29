@@ -139,75 +139,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/cart/{cartId}/item/{itemId}": {
-            "put": {
-                "description": "Updates the quantity of a specific item in a cart, removes if quantity = 0",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Cart"
-                ],
-                "summary": "Update quantity of a cart item",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Cart ID",
-                        "name": "cartId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Item ID",
-                        "name": "itemId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Quantity payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated cart",
-                        "schema": {
-                            "$ref": "#/definitions/models.Cart"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid input",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update item",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/cart/{id}": {
             "get": {
                 "description": "Get items in a cart using cartId",
@@ -849,6 +780,9 @@ const docTemplate = `{
         },
         "models.Cart": {
             "type": "object",
+            "required": [
+                "items"
+            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -859,25 +793,24 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.CartItem"
                     }
                 },
-                "totalprice": {
+                "totalPrice": {
                     "type": "number"
                 }
             }
         },
         "models.CartItem": {
             "type": "object",
+            "required": [
+                "itemId",
+                "quantity"
+            ],
             "properties": {
-                "item_id": {
+                "itemId": {
                     "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "number"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },
@@ -941,17 +874,26 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "image_url": {
+                "image": {
                     "type": "string"
                 },
-                "is_available": {
+                "isAvailable": {
                     "type": "boolean"
+                },
+                "mealTime": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
                 "price": {
                     "type": "number"
+                },
+                "rating": {
+                    "type": "number"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -984,7 +926,7 @@ const docTemplate = `{
                 "age": {
                     "type": "integer"
                 },
-                "cart_id": {
+                "cartId": {
                     "type": "string"
                 },
                 "email": {
@@ -993,7 +935,7 @@ const docTemplate = `{
                 "firstName": {
                     "type": "string"
                 },
-                "is_active": {
+                "isActive": {
                     "type": "boolean"
                 },
                 "lastName": {
@@ -1057,7 +999,16 @@ const docTemplate = `{
         "models.UserLoginResponse": {
             "type": "object",
             "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
                 "token": {
+                    "type": "string"
+                },
+                "userId": {
                     "type": "string"
                 }
             }
