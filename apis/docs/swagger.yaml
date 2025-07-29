@@ -18,19 +18,21 @@ definitions:
         items:
           $ref: '#/definitions/models.CartItem'
         type: array
-      totalprice:
+      totalPrice:
         type: number
+    required:
+    - items
     type: object
   models.CartItem:
     properties:
-      item_id:
+      itemId:
         type: string
-      name:
-        type: string
-      price:
-        type: number
       quantity:
+        minimum: 1
         type: integer
+    required:
+    - itemId
+    - quantity
     type: object
   models.Order:
     properties:
@@ -72,14 +74,20 @@ definitions:
         type: string
       id:
         type: string
-      image_url:
+      image:
         type: string
-      is_available:
+      isAvailable:
         type: boolean
+      mealTime:
+        type: string
       name:
         type: string
       price:
         type: number
+      rating:
+        type: number
+      type:
+        type: string
     type: object
   models.UpdateUserRoleRequest:
     properties:
@@ -97,13 +105,13 @@ definitions:
         type: string
       age:
         type: integer
-      cart_id:
+      cartId:
         type: string
       email:
         type: string
       firstName:
         type: string
-      is_active:
+      isActive:
         type: boolean
       lastName:
         type: string
@@ -151,7 +159,13 @@ definitions:
     type: object
   models.UserLoginResponse:
     properties:
+      email:
+        type: string
+      role:
+        type: string
       token:
+        type: string
+      userId:
         type: string
     type: object
 host: localhost:8000
@@ -238,53 +252,6 @@ paths:
               type: string
             type: object
       summary: Overwrite or add items to cart
-      tags:
-      - Cart
-  /cart/{cartId}/item/{itemId}:
-    put:
-      consumes:
-      - application/json
-      description: Updates the quantity of a specific item in a cart, removes if quantity
-        = 0
-      parameters:
-      - description: Cart ID
-        in: path
-        name: cartId
-        required: true
-        type: string
-      - description: Item ID
-        in: path
-        name: itemId
-        required: true
-        type: string
-      - description: Quantity payload
-        in: body
-        name: request
-        required: true
-        schema:
-          additionalProperties:
-            type: integer
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Updated cart
-          schema:
-            $ref: '#/definitions/models.Cart'
-        "400":
-          description: Invalid input
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Failed to update item
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update quantity of a cart item
       tags:
       - Cart
   /cart/{id}:

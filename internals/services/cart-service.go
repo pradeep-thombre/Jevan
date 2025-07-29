@@ -9,7 +9,6 @@ import (
 
 type CartService interface {
 	UpdateCart(ctx context.Context, cart *models.Cart) error
-	UpdateItemQuantity(ctx context.Context, cartId string, itemId string, quantity int) (*models.Cart, error)
 	GetCartItemsById(ctx context.Context, cartId string) (*models.Cart, error)
 	DeleteAllItems(ctx context.Context, cartId string) error
 }
@@ -62,41 +61,4 @@ func (cs *cartService) UpdateCart(ctx context.Context, cart *models.Cart) error 
 
 	logger.Infof("Cart %s updated successfully", cart.ID)
 	return nil
-}
-
-func (cs *cartService) UpdateItemQuantity(ctx context.Context, cartId, itemId string, quantity int) (*models.Cart, error) {
-	logger := apploggers.GetLoggerWithCorrelationid(ctx)
-	logger.Infof("Executing UpdateItemQuantity cartId: %s, itemId: %s, quantity: %d", cartId, itemId, quantity)
-
-	cart, err := cs.GetCartItemsById(ctx, cartId)
-	if err != nil {
-		logger.Errorf("Failed to retrieve cart %s: %v", cartId, err)
-		return nil, err
-	}
-
-	var updatedItems []models.CartItem
-	var total float64
-
-	for _, item := range cart.Items {
-		if item.ItemID == itemId {
-			if quantity == 0 {
-				continue
-			}
-			item.Quantity = quantity
-		}
-		total += float64(item.Quantity) * item.Price
-		updatedItems = append(updatedItems, item)
-	}
-
-	cart.Items = updatedItems
-	cart.TotalPrice = total
-
-	err = cs.dbservice.SaveCart(ctx, cart)
-	if err != nil {
-		logger.Errorf("Failed to save updated cart %s: %v", cartId, err)
-		return nil, err
-	}
-
-	logger.Infof("Updated item quantity in cart %s successfully", cartId)
-	return cart, nil
 }

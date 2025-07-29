@@ -85,32 +85,31 @@ func main() {
 
 	// Auth-Protected User Actions
 	userPrivate := e.Group("/users", jwtMiddleware)
-	userPrivate.DELETE(":id", userController.DeleteUserById)
-	userPrivate.PATCH(":id", userController.UpdateUser)
+	userPrivate.DELETE("/:id", userController.DeleteUserById)
+	userPrivate.PATCH("/:id", userController.UpdateUser)
 
 	// Product Routes
 	productPublic := e.Group("/products")
 	productPublic.GET("", productController.GetAllProducts)
-	productPublic.GET(":id", productController.GetProductById)
+	productPublic.GET("/:id", productController.GetProductById)
 
 	productPrivate := e.Group("/products", jwtMiddleware)
-	productPrivate.POST("", productController.CreateProduct)
-	productPrivate.PUT(":id", productController.UpdateProduct)
-	productPrivate.DELETE(":id", productController.DeleteProductById)
+	productPrivate.POST("/:id", productController.CreateProduct)
+	productPrivate.PUT("/:id", productController.UpdateProduct)
+	productPrivate.DELETE("/:id", productController.DeleteProductById)
 
 	// Cart Routes
 	cart := e.Group("/cart", jwtMiddleware)
-	cart.POST("", cartController.UpdateCart)
-	cart.GET(":id", cartController.GetCartItemsById)
-	cart.DELETE(":id/all", cartController.DeleteAllItems)
-	cart.PUT(":cartId/item/:itemId", cartController.UpdateItemQuantity)
+	cart.POST("/:id", cartController.UpdateCart)
+	cart.GET("/:id", cartController.GetCartItemsById)
+	cart.DELETE("/:id/all", cartController.DeleteAllItems)
 
 	// Order Routes
 	order := e.Group("/orders", jwtMiddleware)
 	order.POST("", orderController.CreateOrder)
 	order.GET("", orderController.GetAllOrders)
-	order.GET(":id", orderController.GetOrderById)
-	order.PUT(":id", orderController.UpdateOrder)
+	order.GET("/:id", orderController.GetOrderById)
+	order.PUT("/:id", orderController.UpdateOrder)
 
 	logger.Infof("Starting Jevan API server on port %s", configs.AppConfig.HttpPort)
 	e.Logger.Fatal(e.Start(":" + configs.AppConfig.HttpPort))

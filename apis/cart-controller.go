@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // cartController handles operations related to cart.
@@ -38,49 +39,29 @@ func (cc *cartController) UpdateCart(e echo.Context) error {
 	lcontext, logger := apploggers.GetLoggerFromEcho(e)
 	var cart models.Cart
 	if err := e.Bind(&cart); err != nil {
-		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid cart data"})
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid cart data" + err.Error()})
 	}
+	cartId := e.Param("id")
+	logger.Infof("Executing cart update cartId: %s, Payload: %v", cartId, cart)
+
+	primitiveCartId, err := primitive.ObjectIDFromHex(cartId)
+	if err != nil {
+		logger.Error("Invalid cart ID provided")
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid cart ID" + err.Error()})
+	}
+	cart.ID = primitiveCartId
+
+	if err := commons.ValidateStruct(cart); err != nil {
+		logger.Error("Validation failed for cart:", err)
+		return e.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed for cart" + err.Error()})
+	}
+
 	logger.Infof("Executing UpdateCart %v", cart)
 	if err := cc.cservice.UpdateCart(lcontext, &cart); err != nil {
-		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not update cart"})
+		return e.JSON(http.StatusInternalServerError, map[string]string{"error": "Could not update cart" + err.Error()})
 	}
 	logger.Infof("Executed UpdateCart %v", cart)
 	return e.JSON(http.StatusOK, cart)
-}
-
-// UpdateItemQuantity godoc
-// @Summary Update quantity of a cart item
-// @Description Updates the quantity of a specific item in a cart, removes if quantity = 0
-// @Tags Cart
-// @Accept json
-// @Produce json
-// @Param cartId path string true "Cart ID"
-// @Param itemId path string true "Item ID"
-// @Param request body map[string]int true "Quantity payload" example({"quantity": 2})
-// @Success 200 {object} models.Cart "Updated cart"
-// @Failure 400 {object} map[string]string "Invalid input"
-// @Failure 500 {object} map[string]string "Failed to update item"
-// @Router /cart/{cartId}/item/{itemId} [put]
-func (cc *cartController) UpdateItemQuantity(c echo.Context) error {
-	lcontext, logger := apploggers.GetLoggerFromEcho(c)
-	cartId := c.Param("cartId")
-	itemId := c.Param("itemId")
-
-	type Request struct {
-		Quantity int `json:"quantity"`
-	}
-	var req Request
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
-	}
-	logger.Infof("Executing UpdateItemQuantity cart id: %s, item id", cartId, itemId)
-
-	updatedCart, err := cc.cservice.UpdateItemQuantity(lcontext, cartId, itemId, req.Quantity)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	return c.JSON(http.StatusOK, updatedCart)
 }
 
 // GetCartItemsById godoc

@@ -7,10 +7,10 @@ type User struct {
 	FirstName string             `bson:"firstName" json:"firstName" validate:"required"`
 	LastName  string             `bson:"lastName" json:"lastName" validate:"required"`
 	Email     string             `bson:"email" json:"email" validate:"required,email"`
-	CartId    string             `json:"cart_id"`
+	CartId    string             `json:"cartId"`
 	Type      string             `json:"type"`
 	Age       int                `json:"age"`
-	IsActive  bool               `json:"is_active"`
+	IsActive  bool               `json:"isActive"`
 }
 
 type UserDetails struct {
