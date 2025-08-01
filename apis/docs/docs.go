@@ -816,6 +816,10 @@ const docTemplate = `{
         },
         "models.Order": {
             "type": "object",
+            "required": [
+                "items",
+                "userId"
+            ],
             "properties": {
                 "id": {
                     "type": "string"
@@ -826,39 +830,38 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.OrderItem"
                     }
                 },
-                "ordered_at": {
+                "orderedAt": {
                     "description": "Unix timestamp",
                     "type": "integer"
                 },
                 "status": {
-                    "description": "e.g., \"pending\", \"confirmed\", \"delivered\"",
+                    "description": "e.g., \"Order Placed\", \"Ready\", \"Preparing\", \"Delivered\", \"Shipped\"",
                     "type": "string"
                 },
                 "totalprice": {
                     "type": "number"
                 },
-                "updated_at": {
-                    "type": "string"
+                "updatedAt": {
+                    "type": "integer"
                 },
-                "user_id": {
+                "userId": {
                     "type": "string"
                 }
             }
         },
         "models.OrderItem": {
             "type": "object",
+            "required": [
+                "itemId",
+                "quantity"
+            ],
             "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "number"
-                },
-                "product_id": {
+                "itemId": {
                     "type": "string"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         },

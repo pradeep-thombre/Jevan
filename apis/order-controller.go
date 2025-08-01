@@ -37,7 +37,12 @@ func (oc *OrderController) CreateOrder(c echo.Context) error {
 	var order *models.Order
 	if err := c.Bind(&order); err != nil || order == nil {
 		logger.Error("Invalid request payload")
-		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request payload", nil))
+		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse("Invalid request payload, error: "+err.Error(), nil))
+	}
+
+	if err := commons.ValidateStruct(order); err != nil {
+		logger.Error("Validation failed for order:", err)
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Validation failed for order" + err.Error()})
 	}
 
 	orderID, err := oc.oservice.CreateOrder(lcontext, order)
@@ -46,7 +51,7 @@ func (oc *OrderController) CreateOrder(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, commons.ApiErrorResponse(err.Error(), nil))
 	}
 
-	logger.Infof("Executed CreateOrder, orderId: %s", orderID)
+	logger.Infof("Order Placed Successfully, orderId: %s", orderID)
 	return c.JSON(http.StatusCreated, map[string]string{
 		"id": orderID,
 	})

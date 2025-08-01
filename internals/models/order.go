@@ -1,18 +1,18 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type Order struct {
-	ID         string      `json:"id,omitempty"`
-	UserID     string      `json:"user_id"`
-	Items      []OrderItem `json:"items"`
-	TotalPrice float64     `json:"totalprice"`
-	Status     string      `json:"status"`     // e.g., "pending", "confirmed", "delivered"
-	OrderedAt  int64       `json:"ordered_at"` // Unix timestamp
-	UpdatedAt  string      `json:"updated_at"`
+	ID         primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	UserID     string             `json:"userId" validate:"required"`
+	Items      []OrderItem        `json:"items" validate:"required"`
+	TotalPrice float64            `json:"totalPrice"`
+	Status     string             `json:"status"`    // e.g., "Order Placed", "Ready", "Preparing", "Delivered", "Shipped"
+	OrderedAt  int64              `json:"orderedAt"` // Unix timestamp
+	UpdatedAt  int64              `json:"updatedAt"`
 }
 
 type OrderItem struct {
-	ProductID string  `json:"product_id"`
-	Name      string  `json:"name"`
-	Price     float64 `json:"price"`
-	Quantity  int     `json:"quantity"`
+	ItemID   string `json:"itemId" validate:"required"`
+	Quantity int    `json:"quantity" validate:"required,min=1"`
 }
