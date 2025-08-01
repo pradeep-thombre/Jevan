@@ -94,7 +94,7 @@ func main() {
 	productPublic.GET("/:id", productController.GetProductById)
 
 	productPrivate := e.Group("/products", jwtMiddleware)
-	productPrivate.POST("/:id", productController.CreateProduct)
+	productPrivate.POST("", productController.CreateProduct)
 	productPrivate.PUT("/:id", productController.UpdateProduct)
 	productPrivate.DELETE("/:id", productController.DeleteProductById)
 

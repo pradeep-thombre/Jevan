@@ -6,6 +6,7 @@ import (
 	"Jevan/internals/models"
 	"context"
 	"fmt"
+	"time"
 )
 
 type OrderService interface {
@@ -28,6 +29,10 @@ func NewOrderService(dbservice db.OrderDbService) OrderService {
 func (os *orderService) CreateOrder(ctx context.Context, order *models.Order) (string, error) {
 	logger := apploggers.GetLoggerWithCorrelationid(ctx)
 	logger.Info("Executing CreateOrder")
+	currentTime := time.Now().Unix()
+	order.OrderedAt = currentTime
+	order.UpdatedAt = currentTime
+	order.Status = "placed"
 
 	orderID, err := os.dbservice.SaveOrder(ctx, order)
 	if err != nil {

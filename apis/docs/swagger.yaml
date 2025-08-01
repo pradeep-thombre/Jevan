@@ -42,29 +42,32 @@ definitions:
         items:
           $ref: '#/definitions/models.OrderItem'
         type: array
-      ordered_at:
+      orderedAt:
         description: Unix timestamp
         type: integer
       status:
-        description: e.g., "pending", "confirmed", "delivered"
+        description: e.g., "Order Placed", "Ready", "Preparing", "Delivered", "Shipped"
         type: string
       totalprice:
         type: number
-      updated_at:
+      updatedAt:
+        type: integer
+      userId:
         type: string
-      user_id:
-        type: string
+    required:
+    - items
+    - userId
     type: object
   models.OrderItem:
     properties:
-      name:
-        type: string
-      price:
-        type: number
-      product_id:
+      itemId:
         type: string
       quantity:
+        minimum: 1
         type: integer
+    required:
+    - itemId
+    - quantity
     type: object
   models.Product:
     properties:
